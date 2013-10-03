@@ -34,7 +34,7 @@ function createLogger (config) {
   , streams: [ 
       {
         stream: process.stdout
-      , level: 'warn'
+      , level: 'error'
       }
     , { 
         path: logFile
@@ -44,7 +44,7 @@ function createLogger (config) {
       }
     , { 
         path: logErrorFile
-      , level: 'error'
+      , level: 'warn'
       }
     ]
   , serializers: bunyan.stdSerializers
