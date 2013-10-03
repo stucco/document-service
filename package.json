@@ -1,0 +1,28 @@
+{
+  "name": "document-service",
+  "version": "0.0.1",
+  "description": "API for interacting with raw document store",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "./node_modules/.bin/forever start --append -o ./forever.log -e ./forever.log server.js",
+    "stop": "./node_modules/.bin/forever stop server.js",
+    "status": "./node_modules/.bin/forever list",
+    "test": "./node_modules/.bin/mocha -R spec test/*-test.js"
+  },
+  "dependencies": {
+    "restify": "~2.6",
+    "bunyan": "~0.21",
+    "yaml-config": "~0.3",
+    "forever": "~0.10",
+    "riak": "~1"
+  },
+  "devDependencies": {
+    "mocha": "~1.12",
+    "chai": "~1.7",
+    "supertest": "~0.7"
+  },
+  "engine": {
+    "node": "~0.10"
+  }
+}

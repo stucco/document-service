@@ -1,0 +1,7 @@
+{
+  "node": true
+, "laxcomma": true
+, "laxbreak": true
+, "indent": 2
+, "globalstrict": true
+}
