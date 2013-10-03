@@ -4,8 +4,8 @@
 
 var path = require('path')
   , restify = require('restify')
-  , Riak = require('riak');
-
+  , riak = require('riak-js')
+  , riakClient;
 
 exports.createServer = createServer;
 
@@ -21,17 +21,16 @@ function createServer (logger, riakConfig) {
 
   if (logger) config.log = logger;
 
-  // create riak client connection
-  var riakClient = new Riak(riakConfig.servers, riakConfig.client, riakConfig.pool);
+  // create riak client connection (uses poolee for pooling)
+  riakClient = riak.getClient({pool: {servers: riakConfig.servers, name: riakConfig.pool, keepAlive: true}, clientId: riakConfig.client});
 
   // create restify server
   var server = restify.createServer(config);
-
   server.use(restify.acceptParser(server.acceptable));
   server.use(restify.queryParser());
   server.use(restify.gzipResponse());
 
-
+  // default not found route
   server.on('NotFound', function (req, res, next) {
     if (logger) logger.debug('404', 'Request for ' + req.url + ' not found. No route.');
     res.send(404, req.url + ' was not found');
@@ -41,64 +40,77 @@ function createServer (logger, riakConfig) {
   
   // ROUTES
   
-  // retrieve a document based on an id
-  // /get/:id
+  // retrieve a document based on an key
+  // /get/:key
   // USAGE EXAMPLE: /get/2345
-  server.get('/get/:id', _getDocument);
+  server.get('/get/:key', _getDocument);
 
-  // add a document and return an id
-  // /get/:id
+  // add a document and return an key
+  // /get/:key
   // USAGE EXAMPLE: /get/2345
-  server.put('/add', _addDocument);
+  server.put('/add', restify.bodyParser({mapParams: false}), _addDocument);
   
   
+  // retrieve document from riak
+  // key parameter is required
   function _getDocument (req, res, next) {
-    var id = req.params.id;
+    if (! req.params.key) {
+      return next(new restify.MissingParameterError('Supply a document key'));
+    }
+    var key = req.params.key;
 
-    // retrieve document from riak
-    riakClient.get(riakConfig.bucket, id, {}, function(error, response, result) {
+    // set the content type to json
+    res.contentType = 'json';
+
+    // retrieve the document
+    riakClient.get(riakConfig.bucket, key, {stream: true}, function(error, data, meta) {
       if (error) {
-        logger.error(error);
-        return next(new restify.InternalError('Riak error: ' + error));
+        if (error.statusCode === 404) {
+          logger.warn('Riak key \'' + key + '\' not found.');
+          return next(new restify.ResourceNotFoundError('key ' + key + ' not found.'));
+        }
+        else {
+          logger.error(error);
+          return next(new restify.InternalError('Riak GET error: ' + error));
+        }
       }
 
-      if (!result) {
-        var riakErrMsg = 'Riak error getting document ' + id;
-        logger.error(riakErrMsg);
-        return next(new restify.InternalError(riakErrMsg));
-      }
-      else {
-        res.send(result);
+      // stream to response (streamed to response.text)
+      data.pipe(res)
+      .on('error', function(err) {
+        logger.error(error);
+        return next(new restify.InternalError('Riak GET error: ' + error));
+      })      
+      .on('end', function() {
         return next();
-      }
+      });
+
     });
   }
 
+
+  // add document to riak
   function _addDocument (req, res, next) {
 
-    var fileName = req.params.name;
-    var fileBytes = req.headers['content-length'];
-    var newFile = require('fs').createWriteStream('./uploads/' + fileName);
-    var uploadedBytes = 0;
-   
-    console.log(fileBytes);
-    console.log(req.headers);
-   
-    req.on('end', function(){
-      console.log("on finish event");
-      res.send(200, { message: "File uploaded" });
+    var doc = req.body
+      , type = req.contentType
+      , length = req.contentLength;
+    if (type === 'application/json' && typeof doc === 'object') {
+      doc = JSON.stringify(doc);
+    }
+
+    riakClient.save(riakConfig.bucket, null, doc, function(error, response, meta) {
+      var key = meta.key;
+      if (error) {
+        logger.error(error);
+        return next(new restify.InternalError('Riak PUT error: ' + error));
+      }
+
+      logger.debug('Added document to Riak with key \'' + key + '\'');
+
+      res.send({'key': key, 'message': 'document added'});
       return next();
     });
-   
-    req.on('data', function(chunk){
-      console.log("On the data event");
-      uploadedBytes += chunk.length;
-      var progress = (uploadedBytes / fileBytes) * 100;
-      console.log(progress);
-      console.log(uploadedBytes);
-    });
-   
-    req.pipe(newFile);
 
   }
 

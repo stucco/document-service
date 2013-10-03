@@ -6,7 +6,7 @@ default:
     # log directory
     dir: logs
     # for valid log levels, see [bunyan docs](https://github.com/trentm/node-bunyan#levels)
-    level: debug
+    level: info
   riak:
     # array of riak servers: server:port
     servers:
