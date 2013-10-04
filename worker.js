@@ -40,15 +40,20 @@ function createServer (logger, riakConfig) {
   
   // ROUTES
   
-  // retrieve a document based on an key
-  // /get/:key
-  // USAGE EXAMPLE: /get/2345
+  // /get/:key -- retrieve a document based on an key
+  // optionally add a bucket query parameter
+  // Example: /get/2345
   server.get('/get/:key', _getDocument);
 
-  // add a document and return an key
-  // /get/:key
-  // USAGE EXAMPLE: /get/2345
+  // /add -- add a document and return an key
+  // optionally add a bucket query parameter
+  // Example: /add or /add?bucket=bucketName
   server.put('/add', restify.bodyParser({mapParams: false}), _addDocument);
+
+  // /add/:key -- add a document using a given key
+  // optionally add a bucket query parameter
+  // Example: /add/23456 or /add/23456?bucket=bucketName
+  server.put('/add/:key', restify.bodyParser({mapParams: false}), _addDocument);
   
   
   // retrieve document from riak
@@ -57,13 +62,14 @@ function createServer (logger, riakConfig) {
     if (! req.params.key) {
       return next(new restify.MissingParameterError('Supply a document key'));
     }
-    var key = req.params.key;
+    var key = req.params.key
+      , bucket = req.params.bucket || riakConfig.bucket;
 
     // set the content type to json
     res.contentType = 'json';
 
     // retrieve the document
-    riakClient.get(riakConfig.bucket, key, {stream: true}, function(error, data, meta) {
+    riakClient.get(bucket, key, {stream: true}, function(error, data, meta) {
       if (error) {
         if (error.statusCode === 404) {
           logger.warn('Riak key \'' + key + '\' not found.');
@@ -82,6 +88,7 @@ function createServer (logger, riakConfig) {
         return next(new restify.InternalError('Riak GET error: ' + error));
       })      
       .on('end', function() {
+        logger.debug('Retrieved document \'' + key + '\' from Riak');
         return next();
       });
 
@@ -90,16 +97,24 @@ function createServer (logger, riakConfig) {
 
 
   // add document to riak
+  // TODO - USE STREAMS
   function _addDocument (req, res, next) {
 
     var doc = req.body
+      , bucket = req.params.bucket || riakConfig.bucket
       , type = req.contentType
       , length = req.contentLength;
+
+    if (! doc) {
+      return next(new restify.MissingParameterError('Supply the document to add'));
+    }
+
     if (type === 'application/json' && typeof doc === 'object') {
       doc = JSON.stringify(doc);
     }
 
-    riakClient.save(riakConfig.bucket, null, doc, function(error, response, meta) {
+    // key is either defined in the request, or will be assigned by riak
+    riakClient.save(bucket, req.params.key, doc, function(error, response, meta) {
       var key = meta.key;
       if (error) {
         logger.error(error);
