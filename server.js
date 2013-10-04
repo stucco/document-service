@@ -17,7 +17,7 @@ exports.run = run;
 
 function spawnWorker (logger) {
   // set up riak options
-  var id = cluster.worker ? cluster.worker.id : 1;
+  var id = cluster.worker ? cluster.worker.id : 0;
   var riakConfig = {};
   riakConfig.servers = settings.riak.servers || ['localhost:8098'];
   riakConfig.client = settings.riak.client + '-' + id || id;
@@ -30,7 +30,8 @@ function spawnWorker (logger) {
   // start listening
   var port = settings.server.port || 8000;
   server.listen(port, function () {
-    logger.info('%s listening at %s', server.name, server.url);
+    console.log('%s listening at %s', (id !== 0 ? server.name + ' worker ' + id : server.name), server.url);
+    logger.info('worker %d listening at %s', id, server.url);
   });
 }
 
