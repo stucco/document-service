@@ -10,7 +10,7 @@ See `config.yaml` for setting the server's listen port, log information, and [ri
 
 ## Usage
 
-```shell
+```bash
 # Specify the content-type in the HTTP header when adding documents,
 #  that specifies the content-type in Riak
 
@@ -35,7 +35,7 @@ curl -XGET -i http://localhost:8000/get/23456 -H 'accept: application/json' -H '
 
 The script can spawn as many processes as there are cores using the nodejs [cluster module](http://nodejs.org/docs/latest/api/cluster.html). To run only a single worker, set `server.cluster: false` in `config.yaml`.
 
-```shell
+```bash
 # start the cluster
 npm start
 # stop the cluster
@@ -52,7 +52,9 @@ Logs will be put in the `logs` directory as JSON files. Control the log-level by
 
 ## Testing
 
-    npm test
+```bash
+npm test
+```
 
 
 ## License
