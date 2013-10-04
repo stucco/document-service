@@ -10,6 +10,28 @@ See `config.yaml` for setting the server's listen port, log information, and [ri
 
 ## Usage
 
+```# Specify the content-type in the HTTP header when adding documents,
+#  that specifies the content-type in Riak
+
+# Add with ID test
+# Expected response: 
+#  {"key":"23456","message":"document added"}%
+curl -XPUT -i http://localhost:8000/add/23456 -H 'accept: application/json' -H 'content-type: application/json' -d '{ "a": 2, "b": 3 }'
+
+# Add without ID test, a default ID will be returned
+# Expected response (the key will actually be different): 
+#  {"key":"JPNH05dUYjA8EH1eOBBdgTYei0g","message":"document added"}%
+curl -XPUT -i http://localhost:8000/add -H 'accept: application/json' -H 'content-type: application/json' -d '{ "c": 4, "d": 5 }'
+
+# Get test
+# Expected response: 
+#  {"a":2,"b":3}
+curl -XGET -i http://localhost:8000/get/23456 -H 'accept: application/json' -H 'content-type: application/json'
+```
+
+
+## Running
+
 The script can spawn as many processes as there are cores using the nodejs [cluster module](http://nodejs.org/docs/latest/api/cluster.html). To run only a single worker, set `server.cluster: false` in `config.yaml`.
 
     # start the cluster
