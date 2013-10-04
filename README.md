@@ -10,7 +10,8 @@ See `config.yaml` for setting the server's listen port, log information, and [ri
 
 ## Usage
 
-```# Specify the content-type in the HTTP header when adding documents,
+```shell
+# Specify the content-type in the HTTP header when adding documents,
 #  that specifies the content-type in Riak
 
 # Add with ID test
@@ -34,10 +35,12 @@ curl -XGET -i http://localhost:8000/get/23456 -H 'accept: application/json' -H '
 
 The script can spawn as many processes as there are cores using the nodejs [cluster module](http://nodejs.org/docs/latest/api/cluster.html). To run only a single worker, set `server.cluster: false` in `config.yaml`.
 
-    # start the cluster
-    npm start
-    # stop the cluster
-    npm stop
+```shell
+# start the cluster
+npm start
+# stop the cluster
+npm stop
+```
 
 `package.json` is set up to use [forever](https://github.com/nodejitsu/forever) to manage processes, so `npm start` and `npm stop` will run forever to start the `server.js` script. `npm run-script list` will list out the forever processes that are running.
 
