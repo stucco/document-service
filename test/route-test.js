@@ -14,12 +14,15 @@ var util = require('util')
   , riakClient;
 
 // testing parameters for 'get' tests
-var getTestOneKey = 'test23456'
+var getTestOneKey = 'testJson12'
   , getTestOneData = {v1: 30, v2: 45}
-  , getTestTwoKey = 'test34567'
+  , getTestTwoKey = 'testJson34'
   , getTestTwoData = {v1: 40, v2: 55}
-  , getTestTwoBucket = 'test1234'
-  , putTestBucket = 'test5678';
+  , getTestTwoBucket = 'testJson56'
+  , getTestThreeKey = 'testPdf12'
+  , getTestThreeFile = path.join(__dirname, 'fixtures', 'test.pdf')
+  , getTestThreeData = fs.readFileSync(getTestThreeFile, {encoding: null})
+  , putTestBucket = 'testBucket00';
 
 
 describe('Test routes', function () {
@@ -33,16 +36,23 @@ describe('Test routes', function () {
       , client = 'riak-js-test'
       , pool = 'test-pool';
 
-    defaultBucket = settings.riak.bucket || 'test';
+    defaultBucket = settings.riak.bucket || 'testBucket';
 
-    riakClient = riak.getClient({pool: {servers: servers, name: pool, keepAlive: true}, clientId: client});
+    // open riak connection
+    riakClient = riak.getClient({pool: {servers: servers, name: pool, keepAlive: true, encodeUri: true}, clientId: client});
 
+    // prepare simple get JSON test
     riakClient.save(defaultBucket, getTestOneKey, getTestOneData, {} , function(error) {
       if (error) console.error(error);
     });
 
-    // put in bucketTest to test get with bucket param
+    // prepare custom bucket JSON test
     riakClient.save(getTestTwoBucket, getTestTwoKey, getTestTwoData, {} , function(error) {
+      if (error) console.error(error);
+    });
+
+    // prepare PDF test
+    riakClient.save(defaultBucket, getTestThreeKey, getTestThreeData, {contentType: 'application/pdf'} , function(error) {
       if (error) console.error(error);
     });
 
@@ -62,13 +72,12 @@ describe('Test routes', function () {
     }, 1500);
   });
 
-  describe('Routes that should throw errors', function () {
+  describe('Test routes: errors', function () {
 
     it('should return not found error (route:  /noroute)', function (done) {
       request(url)
             .get('/get/noroute')
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .expect(404)
             .end(function (err, res) {
               var response = res.body;
@@ -81,7 +90,6 @@ describe('Test routes', function () {
       request(url)
             .get('/get/asdfkhag87y')
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .expect(404)
             .end(function (err, res) {
               var response = res.body;
@@ -92,13 +100,12 @@ describe('Test routes', function () {
 
   });
 
-  describe('Routes that retrieve documents', function () {
+  describe('Test routes: get JSON documents', function () {
 
     it('should return the correct JSON document (route:  /get/:key)', function (done) {
       request(url)
             .get('/get/' + getTestOneKey)
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -114,7 +121,6 @@ describe('Test routes', function () {
       request(url)
             .get('/get/' + getTestTwoKey + '?bucket=' + getTestTwoBucket)
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -128,14 +134,13 @@ describe('Test routes', function () {
 
   });
 
-  describe('Routes that add documents', function () {
+  describe('Test routes: add JSON documents', function () {
 
     it('should add a JSON document and return a key (route:  /add)', function (done) {
       var doc = {'testkey1': 'testval'};
       request(url)
             .put('/add')
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .send(doc)
             .expect(200)
             .end(function (err, res) {
@@ -158,7 +163,6 @@ describe('Test routes', function () {
       request(url)
             .put('/add?bucket=' + putTestBucket)
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .send(doc)
             .expect(200)
             .end(function (err, res) {
@@ -182,7 +186,6 @@ describe('Test routes', function () {
       request(url)
             .put('/add/' + key)
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .send(doc)
             .expect(200)
             .end(function (err, res) {
@@ -207,7 +210,6 @@ describe('Test routes', function () {
       request(url)
             .put('/add/' + key + '?bucket=' + putTestBucket)
             .set('accept', 'application/json')
-            .set('accept-encoding', 'application/gzip')
             .send(doc)
             .expect(200)
             .end(function (err, res) {
@@ -222,6 +224,50 @@ describe('Test routes', function () {
                 data.should.deep.equal(doc);
                 return done();
               });
+            });
+    });
+
+  });
+
+  describe('Test routes: get PDF documents', function () {
+
+    // restify ships with formatters for application/json, text/plain,
+    // and application/octet-stream. do not try to use a more specific
+    // accept format (e.g. application/pdf)
+    // @see http://mcavage.me/node-restify/#Content-Negotiation
+    it('should return the correct PDF document (route:  /get/:key)', function (done) {
+      request(url)
+            .get('/get/' + getTestThreeKey)
+            .set('accept', 'application/octet-stream')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var data = res.text;
+
+              //TODO - TEST IF THE RETURNED PDF IS THE SAME
+              //data.should.deep.equal(getTestThreeData);
+
+              return done();
+            });
+    });
+
+  });
+
+  describe('Test compression', function () {
+
+    it('should return the correct JSON document (route:  /get/:key)', function (done) {
+      request(url)
+            .get('/get/' + getTestOneKey)
+            .set('accept', 'application/json')
+            .set('accept-encoding', 'application/gzip')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var response = JSON.parse(res.text);
+              response.should.be.an('object');
+              response.v1.should.equal(getTestOneData.v1);
+              response.v2.should.equal(getTestOneData.v2);
+              return done();
             });
     });
 

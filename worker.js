@@ -22,7 +22,7 @@ function createServer (logger, riakConfig) {
   if (logger) config.log = logger;
 
   // create riak client connection (uses poolee for pooling)
-  riakClient = riak.getClient({pool: {servers: riakConfig.servers, name: riakConfig.pool, keepAlive: true}, clientId: riakConfig.client});
+  riakClient = riak.getClient({pool: {servers: riakConfig.servers, name: riakConfig.pool, keepAlive: true, encodeUri: true}, clientId: riakConfig.client});
 
   // create restify server
   var server = restify.createServer(config);
@@ -80,6 +80,9 @@ function createServer (logger, riakConfig) {
           return next(new restify.InternalError('Riak GET error: ' + error));
         }
       }
+
+      // pass on the content-type from riak to the response
+      res.contentType = meta.contentType;
 
       // stream to response (streamed to response.text)
       data.pipe(res)

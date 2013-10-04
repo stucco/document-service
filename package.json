@@ -10,7 +10,7 @@
     "start": "./node_modules/.bin/forever start --append -o ./forever.log -e ./forever.log server.js",
     "stop": "./node_modules/.bin/forever stop server.js",
     "status": "./node_modules/.bin/forever list",
-    "test": "./node_modules/.bin/mocha --timeout 3000 --slow 1000 -R spec test/*-test.js"
+    "test": "./node_modules/.bin/mocha --timeout 2500 --slow 500 -R spec test/*-test.js"
   },
   "dependencies": {
     "restify": "~2.6",
