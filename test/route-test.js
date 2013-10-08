@@ -76,19 +76,17 @@ describe('Test routes', function () {
 
     it('should return not found error (route:  /noroute)', function (done) {
       request(url)
-            .get('/get/noroute')
+            .get('/noroute')
             .set('accept', 'application/json')
             .expect(404)
             .end(function (err, res) {
-              var response = res.body;
-              response.code.should.equal('ResourceNotFound');
               return done();
             });
     });
 
-    it('should return key not found error (route:  /get/:key)', function (done) {
+    it('should return key not found error (route: GET /document/:key)', function (done) {
       request(url)
-            .get('/get/asdfkhag87y')
+            .get('/document/asdfkhag87y')
             .set('accept', 'application/json')
             .expect(404)
             .end(function (err, res) {
@@ -102,9 +100,9 @@ describe('Test routes', function () {
 
   describe('Test routes: get JSON documents', function () {
 
-    it('should return the correct JSON document (route:  /get/:key)', function (done) {
+    it('should return the correct JSON document (route: GET /document/:key)', function (done) {
       request(url)
-            .get('/get/' + getTestOneKey)
+            .get('/document/' + getTestOneKey)
             .set('accept', 'application/json')
             .expect(200)
             .end(function (err, res) {
@@ -117,9 +115,9 @@ describe('Test routes', function () {
             });
     });
 
-    it('should return the correct JSON document from a specified bucket (route:  /get/:key?bucket=bucketName)', function (done) {
+    it('should return the correct JSON document from a specified bucket (route: GET /document/:key?bucket=bucketName)', function (done) {
       request(url)
-            .get('/get/' + getTestTwoKey + '?bucket=' + getTestTwoBucket)
+            .get('/document/' + getTestTwoKey + '?bucket=' + getTestTwoBucket)
             .set('accept', 'application/json')
             .expect(200)
             .end(function (err, res) {
@@ -136,10 +134,10 @@ describe('Test routes', function () {
 
   describe('Test routes: add JSON documents', function () {
 
-    it('should add a JSON document and return a key (route:  /add)', function (done) {
+    it('should add a JSON document and return a key (route: PUT /document)', function (done) {
       var doc = {'testkey1': 'testval'};
       request(url)
-            .put('/add')
+            .put('/document')
             .set('accept', 'application/json')
             .send(doc)
             .expect(200)
@@ -158,10 +156,10 @@ describe('Test routes', function () {
             });
     });
 
-    it('should add a JSON document into a specified bucket and return a key (route:  /add?bucket=bucketName)', function (done) {
+    it('should add a JSON document into a specified bucket and return a key (route: PUT /document?bucket=bucketName)', function (done) {
       var doc = {'testkey2': 'testval'};
       request(url)
-            .put('/add?bucket=' + putTestBucket)
+            .put('/document?bucket=' + putTestBucket)
             .set('accept', 'application/json')
             .send(doc)
             .expect(200)
@@ -180,11 +178,11 @@ describe('Test routes', function () {
             });
     });
 
-    it('should add a JSON document with a defined key (route:  /add/:key)', function (done) {
+    it('should add a JSON document with a defined key (route: PUT /document/:key)', function (done) {
       var key = 'test87654'
         , doc = {'testkey3': 'testval'};
       request(url)
-            .put('/add/' + key)
+            .put('/document/' + key)
             .set('accept', 'application/json')
             .send(doc)
             .expect(200)
@@ -204,11 +202,11 @@ describe('Test routes', function () {
             });
     });
 
-    it('should add a JSON document into a specified bucket with a defined key (route:  /add/:key?bucket=bucketName)', function (done) {
+    it('should add a JSON document into a specified bucket with a defined key (route: PUT /document/:key?bucket=bucketName)', function (done) {
       var doc = {'testkey4': 'testval'}
         , key = 'test87654';
       request(url)
-            .put('/add/' + key + '?bucket=' + putTestBucket)
+            .put('/document/' + key + '?bucket=' + putTestBucket)
             .set('accept', 'application/json')
             .send(doc)
             .expect(200)
@@ -235,9 +233,9 @@ describe('Test routes', function () {
     // and application/octet-stream. do not try to use a more specific
     // accept format (e.g. application/pdf)
     // @see http://mcavage.me/node-restify/#Content-Negotiation
-    it('should return the correct PDF document (route:  /get/:key)', function (done) {
+    it('should return the correct PDF document (route: GET /document/:key)', function (done) {
       request(url)
-            .get('/get/' + getTestThreeKey)
+            .get('/document/' + getTestThreeKey)
             .set('accept', 'application/octet-stream')
             .expect(200)
             .end(function (err, res) {
@@ -255,9 +253,9 @@ describe('Test routes', function () {
 
   describe('Test compression', function () {
 
-    it('should return the correct JSON document (route:  /get/:key)', function (done) {
+    it('should return the correct JSON document (route: GET /document/:key)', function (done) {
       request(url)
-            .get('/get/' + getTestOneKey)
+            .get('/document/' + getTestOneKey)
             .set('accept', 'application/json')
             .set('accept-encoding', 'application/gzip')
             .expect(200)

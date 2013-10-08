@@ -40,20 +40,20 @@ function createServer (logger, riakConfig) {
   
   // ROUTES
   
-  // /get/:key -- retrieve a document based on an key
+  // GET /document/:key -- retrieve a document based on an key
   // optionally add a bucket query parameter
-  // Example: /get/2345
-  server.get('/get/:key', _getDocument);
+  // Example: /document/2345
+  server.get('/document/:key', _getDocument);
 
-  // /add -- add a document and return an key
+  // PUT /document -- add a document and return an key
   // optionally add a bucket query parameter
-  // Example: /add or /add?bucket=bucketName
-  server.put('/add', restify.bodyParser({mapParams: false}), _addDocument);
+  // Example: /document or /document?bucket=bucketName
+  server.put('/document', restify.bodyParser({mapParams: false}), _addDocument);
 
-  // /add/:key -- add a document using a given key
+  // PUT /document/:key -- add a document using a given key
   // optionally add a bucket query parameter
-  // Example: /add/23456 or /add/23456?bucket=bucketName
-  server.put('/add/:key', restify.bodyParser({mapParams: false}), _addDocument);
+  // Example: /document/23456 or /document/23456?bucket=bucketName
+  server.put('/document/:key', restify.bodyParser({mapParams: false}), _addDocument);
   
   
   // retrieve document from riak
