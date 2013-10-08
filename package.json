@@ -10,7 +10,9 @@
     "start": "./node_modules/.bin/forever start --append -o ./forever.log -e ./forever.log server.js",
     "stop": "./node_modules/.bin/forever stop server.js",
     "status": "./node_modules/.bin/forever list",
-    "test": "./node_modules/.bin/mocha --timeout 2500 --slow 500 -R spec test/*-test.js"
+    "test": "./node_modules/.bin/mocha --timeout 2500 --slow 500 -R spec test/*-test.js",
+    "docker-build": "sudo docker build -t jgoodall/document-service .",
+    "docker-run": "sudo docker run -p 8000:8000 jgoodall/document-service"
   },
   "dependencies": {
     "restify": "~2.6",

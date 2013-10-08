@@ -57,6 +57,24 @@ npm test
 ```
 
 
+## Docker and Vagrant
+
+To build a virtual machine with [Vagrant](http://www.vagrantup.com/) to expose the `document-service` as a Linux container using [Docker](http://www.docker.io/), do the following to get the VM up and running:
+
+```bash
+vagrant up
+vagrant reload
+vagrant ssh
+```
+
+Once logged into the VM, build the docker image and start the container (the ports in the run command should match the port set in the `config.yaml` and in the `Dockerfile`):
+
+```bash
+sudo docker build -t jgoodall/document-service .
+sudo docker run -p 8000:8000 jgoodall/document-service%        
+```
+
+
 ## License
 
 This software is freely distributable under the terms of the MIT License.
