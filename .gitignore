@@ -6,6 +6,7 @@ Icon?
 Thumbs.db
 # Node files #
 ##############
+node_modules
 logs
 *log
 .vagrant

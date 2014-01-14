@@ -16,10 +16,10 @@
   },
   "dependencies": {
     "restify": "~2.6",
-    "bunyan": ">=0.21",
-    "yaml-config": ">=0.3",
-    "forever": ">=0.10",
-    "riak-js": ">=0.1"
+    "bunyan": "~0.21",
+    "yaml-config": "~0.3",
+    "forever": "~0.10",
+    "riak-js": "~0.10"
   },
   "devDependencies": {
     "mocha": "~1.12",
