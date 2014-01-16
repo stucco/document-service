@@ -10,7 +10,7 @@ default:
   riak:
     # array of riak servers: server:port
     servers:
-      - localhost:8098
+      - 10.10.10.100:8098
     # base name for riak client id
     # a unique number will be assigned to each
     client: stucco-document-service-client
