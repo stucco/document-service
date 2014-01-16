@@ -36,10 +36,10 @@ describe('Test routes', function () {
       , client = 'riak-js-test'
       , pool = 'test-pool';
 
-    defaultBucket = settings.riak.bucket || 'testBucket';
+    var defaultBucket = settings.riak.bucket || 'testBucket';
 
     // open riak connection
-    riakClient = riak.getClient({pool: {servers: servers, name: pool, keepAlive: true, encodeUri: true}, clientId: client});
+    var riakClient = riak.getClient({pool: {servers: servers, name: pool, keepAlive: true, encodeUri: true}, clientId: client});
 
     // prepare simple get JSON test
     riakClient.save(defaultBucket, getTestOneKey, getTestOneData, {} , function(error) {
