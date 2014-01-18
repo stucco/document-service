@@ -5,12 +5,14 @@
 var util = require('util')
   , path = require('path')
   , fs = require('fs')
-  , settings = require('yaml-config').readConfig(path.join(__dirname, '..', 'config.yaml'), 'default')
+  , queue = require('queue-async')
   , should = require('chai').should()
   , request = require('supertest')
-  , url = 'http://localhost:' + settings.server.port
-  , defaultBucket
-  , riak = require('riak-js')
+  , riak = require('riak-js');
+
+var settings = require('yaml-config').readConfig(path.join(__dirname, '..', 'defaultConfig.yml'), 'default')
+  , url = 'http://127.0.0.1:' + settings.port
+  , riakBucket
   , riakClient;
 
 // testing parameters for 'get' tests
@@ -25,51 +27,50 @@ var getTestOneKey = 'testJson12'
   , putTestBucket = 'testBucket00';
 
 
-describe('Test routes', function () {
+describe('Test routes (' + url + ')', function () {
 
   before(function (done) {
     
-    var server = require('../server');
-
     // add document to riak
     var servers = settings.riak.servers || ['localhost:8098']
       , client = 'riak-js-test'
       , pool = 'test-pool';
 
-    defaultBucket = settings.riak.bucket || 'testBucket';
+    riakBucket = settings.riak.bucket || 'testBucket';
 
     // open riak connection
     riakClient = riak.getClient({pool: {servers: servers, name: pool, keepAlive: true, encodeUri: true}, clientId: client});
 
-    // prepare simple get JSON test
-    riakClient.save(defaultBucket, getTestOneKey, getTestOneData, {} , function(error) {
-      if (error) console.error(error);
-    });
+    queue(3)
+      .defer(function(callback) {
+        riakClient.save(riakBucket, getTestOneKey, getTestOneData, {} , function(err) {
+          return callback(err);
+        });
+      })
+      .defer(function(callback) {
+        riakClient.save(getTestTwoBucket, getTestTwoKey, getTestTwoData, {} , function(err) {
+          return callback(err);
+        });
+      })
+      .defer(function(callback) {
+        riakClient.save(riakBucket, getTestThreeKey, getTestThreeData, {contentType: 'application/pdf'} , function(err) {
+          return callback(err);
+        });
+      })
+      .awaitAll(function (err) {
+        if (err) return done(err);
+        request(url)
+            .get('/')
+            .expect(404)
+            .end(function (err, res) {
+              if (err) {
+                if (err.code === 'ECONNREFUSED') return done(new Error('Server is not running.'));
+                return done(err);
+              }
+              return done();
+            });
+      });
 
-    // prepare custom bucket JSON test
-    riakClient.save(getTestTwoBucket, getTestTwoKey, getTestTwoData, {} , function(error) {
-      if (error) console.error(error);
-    });
-
-    // prepare PDF test
-    riakClient.save(defaultBucket, getTestThreeKey, getTestThreeData, {contentType: 'application/pdf'} , function(error) {
-      if (error) console.error(error);
-    });
-
-
-    // make sure the server is started
-    setTimeout(function() {
-      request(url)
-          .get('/')
-          .expect(404)
-          .end(function (err, res) {
-            if (err) {
-              if (err.code === 'ECONNREFUSED') return done(new Error('Server is not running.'));
-              return done(err);
-            }
-            return done();
-          });
-    }, 1500);
   });
 
   describe('Test routes: errors', function () {
@@ -148,7 +149,7 @@ describe('Test routes', function () {
               response.should.be.an('object');
               should.exist(generatedKey);
               response.message.should.equal('document added');
-              riakClient.get(defaultBucket, generatedKey, {}, function(riakErr, data) {
+              riakClient.get(riakBucket, generatedKey, {}, function(riakErr, data) {
                 if (riakErr) return done(riakErr);
                 data.should.deep.equal(doc);
                 return done();
@@ -194,7 +195,7 @@ describe('Test routes', function () {
               should.exist(generatedKey);
               generatedKey.should.equal(key);
               response.message.should.equal('document added');
-              riakClient.get(defaultBucket, key, {}, function(riakErr, data) {
+              riakClient.get(riakBucket, key, {}, function(riakErr, data) {
                 if (riakErr) return done(riakErr);
                 data.should.deep.equal(doc);
                 return done();

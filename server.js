@@ -4,10 +4,10 @@
 
 var path = require('path')
   , cluster = require('cluster')
-  , config = require('yaml-config')
-  , settings = config.readConfig(path.join(__dirname, 'config.yaml'))
+  , settings = {}
   , worker = require('./worker')
-  , logging = require('./logging');
+  , logging = require('./logging')
+  , config = require('./config');
 
 // if process.env.NODE_ENV has not been set, default to development
 var NODE_ENV = process.env.NODE_ENV || 'development';
@@ -28,7 +28,7 @@ function spawnWorker (logger) {
   var server = worker.createServer(logger, riakConfig);
 
   // start listening
-  var port = settings.server.port || 8000;
+  var port = settings.port || 8000;
   server.listen(port, function () {
     console.log('%s listening at %s', (id !== 0 ? server.name + ' worker ' + id : server.name), server.url);
     logger.info('worker %d listening at %s', id, server.url);
@@ -67,16 +67,25 @@ function createCluster (logger) {
 
 function run (cluster) {
 
-  // Set up logging
-  var logger = logging.createLogger(settings.logs);
+  // Get configuration from etcd, if it is available
+  config.load(function(err, cfg) {
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    settings = cfg;
 
-  // In production environment, create a cluster
-  if (NODE_ENV === 'production' || Boolean(settings.server.cluster) || cluster ) {
-    createCluster(logger);
-  }
-  else {
-    spawnWorker(logger);
-  }
+    // Set up logging
+    var logger = logging.createLogger(settings.logs);
+
+    // In production environment, create a cluster
+    if (NODE_ENV === 'production' || Boolean(settings.cluster) || cluster ) {
+      createCluster(logger);
+    }
+    else {
+      spawnWorker(logger);
+    }
+  });
 
 }
 

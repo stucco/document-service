@@ -10,7 +10,8 @@
     "start": "./node_modules/.bin/forever start --append -o ./forever.log -e ./forever.log server.js",
     "stop": "./node_modules/.bin/forever stop server.js",
     "status": "./node_modules/.bin/forever list",
-    "test": "./node_modules/.bin/mocha --timeout 3500 --slow 1500 -R spec test/*-test.js",
+    "test": "./node_modules/.bin/mocha --growl --check-leaks -R dot test/*-test.js",
+    "watch": "./node_modules/.bin/mocha --watch --growl -R min test/*-test.js",
     "docker-build": "sudo docker build -t jgoodall/document-service .",
     "docker-run": "sudo docker run -p 8000:8000 jgoodall/document-service"
   },
@@ -19,7 +20,9 @@
     "bunyan": "~0.21",
     "yaml-config": "~0.3",
     "forever": "~0.10",
-    "riak-js": "~0.10"
+    "riak-js": "~0.10",
+    "node-etcd": "~2",
+    "queue-async": "~1"
   },
   "devDependencies": {
     "mocha": "~1.12",
