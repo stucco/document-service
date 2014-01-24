@@ -8,8 +8,8 @@ var path = require('path')
   , config = require('yaml-config')
   , Etcd = require('node-etcd');
 
-var etcdHost = 'localhost'
-  , etcdPort = '4001'
+var etcdHost = process.env.ETCD_HOST || 'localhost'
+  , etcdPort = process.env.ETCD_PORT || '4001'
   , defaultConfig;
 
 // if process.env.NODE_ENV has not been set, default to development
