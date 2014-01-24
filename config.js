@@ -10,7 +10,7 @@ var path = require('path')
 
 var etcdHost = 'localhost'
   , etcdPort = '4001'
-  , defaultSettings;
+  , defaultConfig;
 
 // if process.env.NODE_ENV has not been set, default to development
 var NODE_ENV = process.env.NODE_ENV || 'development';
@@ -22,13 +22,14 @@ exports.load = load;
 // override defaults if there is an etcd instance
 function load(loadCallback) {
   // load defaults
-  defaultSettings = config.readConfig(path.join(__dirname, 'defaultConfig.yml'));
+  defaultConfig = config.readConfig(path.join(__dirname, 'defaultConfig.yml'));
 
   queue(1)
     .defer(checkEtcd)
     .defer(loadFromEtcd)
-    .await(function (err, chk, cfg) {
-      return loadCallback(err, cfg);
+    .await(function (err, chk, etcdConfig) {
+      var c = etcdConfig || defaultConfig;
+      return loadCallback(null, c);
     });
 
 }
@@ -38,7 +39,7 @@ function checkEtcd (callback) {
     return callback(null);
   })
   .on('error', function (err) {
-    console.info('etcd server, http://' + etcdHost + ':' + etcdPort + ', not available');
+    console.error('etcd server, http://' + etcdHost + ':' + etcdPort + ', not available, using defaults');
     return callback(err);
   });
 }
@@ -79,7 +80,8 @@ function loadFromEtcd (callback) {
         return callback(err);
       }
       
-      var cfg = defaultSettings;
+      var cfg = defaultConfig;
+      
       cfg.port = port;
       cfg.cluster = cluster;
       cfg.riak.servers = rs;
