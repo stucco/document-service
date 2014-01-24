@@ -30,19 +30,23 @@ curl -XPUT -i http://localhost:8000/document -H 'accept: application/json' -H 'c
 curl -XGET -i http://localhost:8000/document/23456 -H 'accept: application/json' -H 'content-type: application/json'
 ```
 
+## Install
+
+Just install the required modules.
+
+    npm install -d
 
 ## Running
 
-The script can spawn as many processes as there are cores using the nodejs [cluster module](http://nodejs.org/docs/latest/api/cluster.html). To run only a single worker, set `server.cluster: false` in `config.yaml`.
+To start:
 
-```bash
-# start the cluster
-npm start
-# stop the cluster
-npm stop
-```
+    npm start
 
-`package.json` is set up to use [forever](https://github.com/nodejitsu/forever) to manage processes, so `npm start` and `npm stop` will run forever to start the `server.js` script. `npm run-script list` will list out the forever processes that are running.
+To set the `etcd` host and port, run:
+
+    ETCD_HOST=127.0.0.1 ETCD_PORT=4001 npm start
+
+If `etcd` is unavailable, it will use the settings defined in the config file.
 
 
 ## Logging
@@ -63,15 +67,14 @@ To build a virtual machine with [Vagrant](http://www.vagrantup.com/) to expose t
 
 ```bash
 vagrant up
-vagrant reload
 vagrant ssh
 ```
 
 Once logged into the VM, build the docker image and start the container (the ports in the run command should match the port set in the `config.yaml` and in the `Dockerfile`):
 
 ```bash
-sudo docker build -t jgoodall/document-service .
-sudo docker run -p 8000:8000 jgoodall/document-service%        
+sudo docker build -t stucco/document-service .
+sudo docker run -p 8000:8000 stucco/document-service%        
 ```
 
 
