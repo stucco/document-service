@@ -10,7 +10,7 @@ var util = require('util')
   , request = require('supertest')
   , riak = require('riak-js');
 
-var settings = require('yaml-config').readConfig(path.join(__dirname, '..', 'defaultConfig.yml'), 'default')
+var settings = require('yaml-config').readConfig(path.join(__dirname, '..', 'defaultConfig.yml')) // use NODE_ENV to specify environment to use, else default
   , url = 'http://127.0.0.1:' + settings.port
   , riakBucket
   , riakClient;

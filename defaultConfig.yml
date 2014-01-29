@@ -1,5 +1,5 @@
 default:
-  port: 8118
+  port: 8000
   cluster: false
   logs:
     # log directory
@@ -16,3 +16,8 @@ default:
     # pool, used for logging
     pool: stucco-document-service-pool
     bucket: stucco
+vagrant:
+  port: 8118
+  riak:
+    servers:
+      - 10.10.10.100:8098
