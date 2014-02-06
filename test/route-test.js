@@ -30,7 +30,18 @@ var getTestOneKey = 'testJson12'
 describe('Test routes (' + url + ')', function () {
 
   before(function (done) {
-    
+
+    // start the server if it is not running
+    request(url)
+        .get('/')
+        .expect(404)
+        .end(function (err, res) {
+          if (err && err.code === 'ECONNREFUSED') {
+            require('../server');
+          }
+        });
+
+
     // add document to riak
     var servers = settings.riak.servers || ['localhost:8098']
       , client = 'riak-js-test'
@@ -64,7 +75,9 @@ describe('Test routes (' + url + ')', function () {
             .expect(404)
             .end(function (err, res) {
               if (err) {
-                if (err.code === 'ECONNREFUSED') return done(new Error('Server is not running.'));
+                if (err.code === 'ECONNREFUSED') {
+                  return done(new Error('Server is not running.'));
+                }
                 return done(err);
               }
               return done();
