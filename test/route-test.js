@@ -27,6 +27,9 @@ describe('Test routes (' + url + ')', function () {
 
   before(function (done) {
 
+    // check that data directory exists
+    mkdirp.sync(settings.data.dir, '0777');
+
     // set up files to get
     var getTestOnePath = path.join(settings.data.dir, getTestOneKey);
     fs.writeFileSync(getTestOnePath, JSON.stringify(getTestOneData)); //, {encoding: 'utf8'});
