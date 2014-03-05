@@ -1,12 +1,12 @@
-# OS generated files #
-######################
+# application directories
+data
+logs
+.vagrant
+# OS generated files
 .DS_Store*
 ehthumbs.db
 Icon?
 Thumbs.db
-# Node files #
-##############
+# Node files
 node_modules
-logs
 *log
-.vagrant

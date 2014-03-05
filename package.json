@@ -17,8 +17,10 @@
     "restify": "~2.6",
     "bunyan": "~0.22",
     "yaml-config": "~0.3",
-    "riak-js": "~0.10",
     "node-etcd": "~2",
+    "mime": "~1.2",
+    "uuid": "~1.4",
+    "mkdirp": "*",
     "queue-async": "~1"
   },
   "devDependencies": {

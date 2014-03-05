@@ -16,16 +16,10 @@ exports.run = run;
 
 
 function spawnWorker (logger) {
-  // set up riak options
   var id = cluster.worker ? cluster.worker.id : 0;
-  var riakConfig = {};
-  riakConfig.servers = settings.riak.servers || ['localhost:8098'];
-  riakConfig.client = settings.riak.client + '-' + id || id;
-  riakConfig.pool = settings.riak.pool || 'default-pool';
-  riakConfig.bucket = settings.riak.bucket || 'default';
 
   // create servers
-  var server = worker.createServer(logger, riakConfig);
+  var server = worker.createServer(logger, settings);
 
   // start listening
   var port = settings.port || 8000;

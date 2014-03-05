@@ -5,14 +5,13 @@ document-service
 
 ## Configuration
 
-See `config.yaml` for setting the server's listen port, log information, and [riak](http://basho.com/riak/) configuration.
+See `config.yaml` for setting the server's listen port, log information, etc.
 
 
 ## Usage
 
 ```bash
-# Specify the content-type in the HTTP header when adding documents,
-#  that specifies the content-type in Riak
+# Specify the content-type in the HTTP header when adding documents
 
 # Add with ID test
 # Expected response: 
@@ -62,6 +61,8 @@ npm test
 
 
 ## Docker and Vagrant
+
+*WIP*
 
 To build a virtual machine with [Vagrant](http://www.vagrantup.com/) to expose the `document-service` as a Linux container using [Docker](http://www.docker.io/), do the following to get the VM up and running:
 

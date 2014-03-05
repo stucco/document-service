@@ -3,9 +3,11 @@
 'use strict';
 
 var path = require('path')
+  , fs = require('fs')
   , restify = require('restify')
-  , riak = require('riak-js')
-  , riakClient;
+  , uuid = require('uuid')
+  , mime = require('mime')
+  , mkdirp = require('mkdirp');
 
 exports.createServer = createServer;
 
@@ -13,19 +15,19 @@ exports.createServer = createServer;
  * Set up server
  * @return the created server
  */
-function createServer (logger, riakConfig) {
+function createServer (logger, config) {
 
-  var config = {
+  var restifyOpts = {
     name: require(path.join(__dirname, 'package')).name
   };
 
-  if (logger) config.log = logger;
+  if (logger) restifyOpts.log = logger;
 
-  // create riak client connection (uses poolee for pooling)
-  riakClient = riak.getClient({pool: {servers: riakConfig.servers, name: riakConfig.pool, keepAlive: true, encodeUri: true}, clientId: riakConfig.client});
+  // check that data directory exists
+  mkdirp.sync(config.data.dir, '0777');
 
   // create restify server
-  var server = restify.createServer(config);
+  var server = restify.createServer(restifyOpts);
   server.use(restify.acceptParser(server.acceptable));
   server.use(restify.queryParser());
   server.use(restify.gzipResponse());
@@ -33,7 +35,7 @@ function createServer (logger, riakConfig) {
   // default not found route
   server.on('NotFound', function (req, res, next) {
     if (logger) logger.debug('404', 'Request for ' + req.url + ' not found. No route.');
-    res.send(404, req.url + ' was not found');
+    res.send(404, 'Route \'' + req.url + '\' was not found');
   });
   
   if (logger) server.on('after', restify.auditLogger({ log: logger }));
@@ -41,95 +43,71 @@ function createServer (logger, riakConfig) {
   // ROUTES
   
   // GET /document/:key -- retrieve a document based on an key
-  // optionally add a bucket query parameter
   // Example: /document/2345
   server.get('/document/:key', _getDocument);
 
   // PUT /document -- add a document and return an key
-  // optionally add a bucket query parameter
   // Example: /document or /document?bucket=bucketName
-  server.put('/document', restify.bodyParser({mapParams: false}), _addDocument);
+  server.put('/document', _putDocument);
 
   // PUT /document/:key -- add a document using a given key
-  // optionally add a bucket query parameter
-  // Example: /document/23456 or /document/23456?bucket=bucketName
-  server.put('/document/:key', restify.bodyParser({mapParams: false}), _addDocument);
+  // Example: /document/23456 or /document/23456
+  server.put('/document/:key', _putDocument);
   
   
-  // retrieve document from riak
+  // GET document
   // key parameter is required
   function _getDocument (req, res, next) {
     if (! req.params.key) {
       return next(new restify.MissingParameterError('Supply a document key'));
     }
+
     var key = req.params.key
-      , bucket = req.params.bucket || riakConfig.bucket;
+      , filePath = path.join(config.data.dir, key);
 
-    // set the content type to json
-    res.contentType = 'json';
+    res.contentType = mime.lookup(filePath);
 
-    // retrieve the document
-    riakClient.get(bucket, key, {stream: true}, function(error, data, meta) {
-      if (error) {
-        if (error.statusCode === 404) {
-          logger.warn('Riak key \'' + key + '\' not found.');
-          return next(new restify.ResourceNotFoundError('key ' + key + ' not found.'));
-        }
-        else {
-          logger.error(error);
-          return next(new restify.InternalError('Riak GET error: ' + error));
-        }
+    // get the file stream to read from
+    var inStream = fs.createReadStream(filePath); //, {encoding: 'utf8'});
+    inStream.on('error', function(err) {
+      logger.error(err);
+      if (err.code === 'ENOENT') {
+        return next(new restify.ResourceNotFoundError('key ' + key + ' not found.'));
       }
-
-      // pass on the content-type from riak to the response
-      res.contentType = meta.contentType;
-
-      // stream to response (streamed to response.text)
-      data.pipe(res)
-      .on('error', function(err) {
-        logger.error(error);
-        return next(new restify.InternalError('Riak GET error: ' + error));
-      })      
-      .on('end', function() {
-        logger.debug('Retrieved document \'' + key + '\' from Riak');
-        return next();
-      });
-
-    });
-  }
-
-
-  // add document to riak
-  // TODO - USE STREAMS
-  function _addDocument (req, res, next) {
-
-    var doc = req.body
-      , bucket = req.params.bucket || riakConfig.bucket
-      , type = req.contentType
-      , length = req.contentLength;
-
-    if (! doc) {
-      return next(new restify.MissingParameterError('Supply the document to add'));
-    }
-
-    if (type === 'application/json' && typeof doc === 'object') {
-      doc = JSON.stringify(doc);
-    }
-
-    // key is either defined in the request, or will be assigned by riak
-    riakClient.save(bucket, req.params.key, doc, function(error, response, meta) {
-      var key = meta.key;
-      if (error) {
-        logger.error(error);
-        return next(new restify.InternalError('Riak PUT error: ' + error));
+      else {
+        return next(new restify.InternalError(err));
       }
-
-      logger.debug('Added document to Riak with key \'' + key + '\'');
-
-      res.send({'key': key, 'message': 'document added'});
+    })
+    .on('end', function() {
       return next();
     });
 
+    // send content
+    inStream.pipe(res);
+
+  }
+
+
+  // PUT document
+  function _putDocument (req, res, next) {
+
+    // get a key or use the one defined
+    var key = req.params.key ? req.params.key : uuid.v4()
+      , filePath = path.join(config.data.dir, key);
+
+    var outStream = fs.createWriteStream(filePath); //, {encoding: 'utf8'});
+
+    req.on('error', function(err) {
+      logger.error(err);
+      return next(new restify.InternalError(err));
+    })
+    .on('end', function() {
+      logger.debug('Added document with key \'' + key + '\'');
+      res.send(200, {'key': key, 'message': 'document added'});
+      return next();
+    });
+
+    req.pipe(outStream);
   }
 
   return server;

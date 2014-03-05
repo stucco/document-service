@@ -1,23 +1,12 @@
 default:
   port: 8000
   cluster: false
+  data:
+    dir: data
   logs:
     # log directory
     dir: logs
     # for valid log levels, see [bunyan docs](https://github.com/trentm/node-bunyan#levels)
     level: debug
-  riak:
-    # array of riak servers: server:port
-    servers:
-      - 127.0.0.1:8098
-    # base name for riak client id
-    # a unique number will be assigned to each
-    client: stucco-document-service-client
-    # pool, used for logging
-    pool: stucco-document-service-pool
-    bucket: stucco
 vagrant:
   port: 8118
-  riak:
-    servers:
-      - 10.10.10.100:8098
