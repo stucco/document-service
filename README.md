@@ -1,7 +1,10 @@
 document-service
 ================
 
-*API for interacting with raw document store*
+*HTTP API for interacting with document store*
+
+master: [![Build Status](https://travis-ci.org/stucco/document-service.png?branch=master)]
+(https://travis-ci.org/stucco/document-service)
 
 ## Configuration
 
