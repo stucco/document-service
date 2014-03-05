@@ -6,7 +6,8 @@ var util = require('util')
   , path = require('path')
   , fs = require('fs')
   , should = require('chai').should()
-  , request = require('supertest');
+  , request = require('supertest')
+  , mkdirp = require('mkdirp');
 
 var settings = require('yaml-config').readConfig(path.join(__dirname, '..', 'defaultConfig.yml')) // use NODE_ENV to specify environment to use, else default
   , url = 'http://127.0.0.1:' + settings.port;
