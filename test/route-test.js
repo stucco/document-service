@@ -21,7 +21,7 @@ var getTestOneKey = 'testJson12'
   , getTestTwoData = '<xml><test>a test</test></xml>'
   , getTestThreeKey = 'testPdf12'
   , getTestThreeFile = path.join(__dirname, 'fixtures', 'test.pdf')
-  , getTestThreeData = fs.readFileSync(getTestThreeFile);
+  , getTestThreeData = fs.readFileSync(getTestThreeFile, {encoding: null});
 
 
 describe('Test routes (' + url + ')', function () {
