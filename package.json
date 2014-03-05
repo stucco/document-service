@@ -28,6 +28,10 @@
     "chai": "~1",
     "supertest": "~0.9"
   },
+  "repository": {
+    "url": "https://github.com/stucco/document-service",
+    "type": "git"
+  },
   "engine": {
     "node": "~0.10"
   }
