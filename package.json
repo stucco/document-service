@@ -7,7 +7,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "./node_modules/.bin/mocha --growl --check-leaks --slow 500 --timeout 10000 -R dot test/*-test.js",
+    "test": "./node_modules/.bin/mocha --growl --check-leaks --slow 500 --timeout 10000 -R spec test/*-test.js",
     "watch": "./node_modules/.bin/mocha --watch --growl -R min test/*-test.js",
     "docker-build": "sudo docker build -t jgoodall/document-service .",
     "docker-run": "sudo docker run -p 8000:8000 jgoodall/document-service"
