@@ -2,7 +2,6 @@
   "name": "document-service",
   "version": "0.0.1",
   "description": "API for interacting with raw document store",
-  "private": true,
   "author": "\"John Goodall <jgoodall@ornl.gov>",
   "license": "MIT",
   "main": "server.js",
