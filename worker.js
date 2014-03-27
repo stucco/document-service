@@ -7,7 +7,8 @@ var path = require('path')
   , restify = require('restify')
   , uuid = require('uuid')
   , mime = require('mime')
-  , mkdirp = require('mkdirp');
+  , mkdirp = require('mkdirp')
+  , tika = require('tika');
 
 exports.createServer = createServer;
 
@@ -65,25 +66,37 @@ function createServer (logger, config) {
     var key = req.params.key
       , filePath = path.join(config.data.dir, key);
 
-    res.contentType = mime.lookup(filePath);
+    if (req.params.extract) {
+      tika.extract(filePath, function(err, text, meta) {
+        if (err) {
+          logger.error(err);
+          return next(new restify.InternalError(err));
+        }
+        res.send(200, {'text': text, 'meta': meta});
+        return next();
+      });
+    }
+    else {
+      res.contentType = mime.lookup(filePath);
 
-    // get the file stream to read from
-    var inStream = fs.createReadStream(filePath); //, {encoding: 'utf8'});
-    inStream.on('error', function(err) {
-      logger.error(err);
-      if (err.code === 'ENOENT') {
-        return next(new restify.ResourceNotFoundError('key ' + key + ' not found.'));
-      }
-      else {
-        return next(new restify.InternalError(err));
-      }
-    })
-    .on('end', function() {
-      return next();
-    });
+      // get the file stream to read from
+      var inStream = fs.createReadStream(filePath); //, {encoding: 'utf8'});
+      inStream.on('error', function(err) {
+        logger.error(err);
+        if (err.code === 'ENOENT') {
+          return next(new restify.ResourceNotFoundError('key ' + key + ' not found.'));
+        }
+        else {
+          return next(new restify.InternalError(err));
+        }
+      })
+      .on('end', function() {
+        return next();
+      });
 
-    // send content
-    inStream.pipe(res);
+      // send content
+      inStream.pipe(res);
+    }
 
   }
 

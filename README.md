@@ -13,20 +13,23 @@ See `config.yaml` for setting the server's listen port, log information, etc.
 
 ## Usage
 
+To add a file, use PUT with an optional v4 uuid; if no uuid is provided, one will be assigned. 
+To get a raw file, use GET with a uuid. Optionally, to just get the text of a file using [Apache Tika](https://tika.apache.org/), add the parameter `extract=true`, for example: `curl -XGET http://localhost:8000/document/12345?extract=true -H 'accept: application/json'`, which will return a JSON object with two keys: `text`, which is the extracted text, and `meta`, which provides some metadata. [Node-tika](https://github.com/mattcg/node-tika) is used to interact with Tika. You may need to set your `JAVA_HOME` environment variable when you install the modules.
+
 ```bash
 # Specify the content-type in the HTTP header when adding documents
 
-# Add with ID test
+# Add with ID
 # Expected response: 
 #  {"key":"23456","message":"document added"}%
 curl -XPUT -i http://localhost:8000/document/23456 -H 'accept: application/json' -H 'content-type: application/json' -d '{ "a": 2, "b": 3 }'
 
-# Add without ID test, a default ID will be returned
+# Add without ID, a default ID will be returned
 # Expected response (the key will actually be different): 
 #  {"key":"JPNH05dUYjA8EH1eOBBdgTYei0g","message":"document added"}%
 curl -XPUT -i http://localhost:8000/document -H 'accept: application/json' -H 'content-type: application/json' -d '{ "c": 4, "d": 5 }'
 
-# Get test
+# Get
 # Expected response: 
 #  {"a":2,"b":3}
 curl -XGET -i http://localhost:8000/document/23456 -H 'accept: application/json' -H 'content-type: application/json'
@@ -36,7 +39,7 @@ curl -XGET -i http://localhost:8000/document/23456 -H 'accept: application/json'
 
 Just install the required modules.
 
-    npm install -d
+    npm install
 
 ## Running
 

@@ -20,8 +20,14 @@ var getTestOneKey = 'testJson12'
   , getTestTwoKey = 'testXml34'
   , getTestTwoData = '<xml><test>a test</test></xml>'
   , getTestThreeKey = 'testPdf12'
-  , getTestThreeFile = path.join(__dirname, 'fixtures', 'test.pdf')
-  , getTestThreeData = fs.readFileSync(getTestThreeFile);
+  , getTestThreeFile = path.join(__dirname, 'fixtures', 'testfile.pdf')
+  , getTestThreeData = fs.readFileSync(getTestThreeFile)
+  , getTestFourKey = 'testHtml34'
+  , getTestFourFile = path.join(__dirname, 'fixtures', 'testfile.html')
+  , getTestFourData = fs.readFileSync(getTestFourFile)
+  , getTestFiveKey = 'testDocx56'
+  , getTestFiveFile = path.join(__dirname, 'fixtures', 'testfile.docx')
+  , getTestFiveData = fs.readFileSync(getTestFiveFile);
 
 
 describe('Test routes (' + url + ')', function () {
@@ -43,6 +49,14 @@ describe('Test routes (' + url + ')', function () {
     var getTestThreePath = path.join(settings.data.dir, getTestThreeKey);
     fs.writeFileSync(getTestThreePath, getTestThreeData); //, {encoding: 'utf8'});
     filesToCleanup.push(getTestThreeKey);
+
+    var getTestFourPath = path.join(settings.data.dir, getTestFourKey);
+    fs.writeFileSync(getTestFourPath, getTestFourData); //, {encoding: 'utf8'});
+    filesToCleanup.push(getTestFourKey);
+
+    var getTestFivePath = path.join(settings.data.dir, getTestFiveKey);
+    fs.writeFileSync(getTestFivePath, getTestFiveData); //, {encoding: 'utf8'});
+    filesToCleanup.push(getTestFiveKey);
 
     // start the server if it is not running
     request(url)
@@ -129,6 +143,58 @@ describe('Test routes (' + url + ')', function () {
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
+              return done();
+            });
+    });
+
+  });
+
+
+  describe('Test routes: text extraction from documents', function () {
+
+    it('should return the correct text extraction of an PDF document (route: GET /document/:key?extract=true)', function (done) {
+      request(url)
+            .get('/document/' + getTestThreeKey + '?extract=true')
+            .set('accept', 'application/json')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var json = JSON.parse(res.text);
+              json.should.be.an('object');
+              json.meta.title.should.equal('test.txt');
+              json.meta['Content-Type'].should.equal('application/pdf');
+              json.text.length.should.equal(60);
+              return done();
+            });
+    });
+
+    it('should return the correct text extraction of a HTML document (route: GET /document/:key?extract=true)', function (done) {
+      request(url)
+            .get('/document/' + getTestFourKey + '?extract=true')
+            .set('accept', 'application/json')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var json = JSON.parse(res.text);
+              json.should.be.an('object');
+              json.meta.title.should.equal('testfile');
+              json.meta['Content-Type'].should.equal('application/xhtml+xml');
+              json.text.length.should.equal(23);
+              return done();
+            });
+    });
+
+    it('should return the correct text extraction of a DOCX document (route: GET /document/:key?extract=true)', function (done) {
+      request(url)
+            .get('/document/' + getTestFiveKey + '?extract=true')
+            .set('accept', 'application/json')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var json = JSON.parse(res.text);
+              json.should.be.an('object');
+              json.meta['Content-Type'].should.equal('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+              json.text.should.equal('This is a test file.\n');
               return done();
             });
     });

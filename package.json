@@ -21,7 +21,8 @@
     "mime": "~1.2",
     "uuid": "~1.4",
     "mkdirp": "*",
-    "queue-async": "~1"
+    "queue-async": "~1",
+    "tika": "~0.2"
   },
   "devDependencies": {
     "mocha": "~1",
