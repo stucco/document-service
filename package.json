@@ -26,7 +26,7 @@
   "devDependencies": {
     "mocha": "~1",
     "chai": "~1",
-    "supertest": "~0.9"
+    "supertest": "~0.10"
   },
   "repository": {
     "url": "https://github.com/stucco/document-service",
