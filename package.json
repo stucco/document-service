@@ -13,7 +13,7 @@
     "docker-run": "sudo docker run -p 8000:8000 jgoodall/document-service"
   },
   "dependencies": {
-    "restify": "~2.6",
+    "restify": "~2.7",
     "bunyan": "~0.22",
     "yaml-config": "~0.3",
     "node-etcd": "~2",
