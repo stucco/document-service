@@ -120,15 +120,19 @@ func startServer(port string) (*os.Process, error) {
 	err = cmd.Start()
 	// read from stdout and wait to see the port number in the output,
 	// which is the last thing the server reports
+	wait := 100 * time.Millisecond
+	waitedFor := 0 * time.Millisecond
+	maxWait := 30 * time.Second
 	for {
 		so, err := ioutil.ReadAll(stdout)
 		if err != nil {
 			return nil, err
 		}
-		if bytes.Contains(so, []byte(":"+port)) {
+		if bytes.Contains(so, []byte(":"+port)) || waitedFor >= maxWait {
 			break
 		}
-		time.Sleep(250)
+		time.Sleep(wait)
+		waitedFor += wait
 	}
 	return cmd.Process, err
 }
