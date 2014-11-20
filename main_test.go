@@ -113,7 +113,23 @@ func (d *DocumentClient) postDocFile(id, contentType, filePath string) (*Documen
 
 func startServer(port string) (*os.Process, error) {
 	cmd := exec.Command("go", "run", "main.go", "-port="+port)
-	err := cmd.Start()
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	err = cmd.Start()
+	// read from stdout and wait to see the port number in the output,
+	// which is the last thing the server reports
+	for {
+		so, err := ioutil.ReadAll(stdout)
+		if err != nil {
+			return nil, err
+		}
+		if bytes.Contains(so, []byte(":"+port)) {
+			break
+		}
+		time.Sleep(50)
+	}
 	return cmd.Process, err
 }
 
@@ -125,7 +141,6 @@ func stopServer(proc *os.Process) error {
 func prepare(p int, t *testing.T) (*DocumentClient, *os.Process) {
 	port := fmt.Sprintf("%d", p)
 	proc, err := startServer(port)
-	time.Sleep(5000)
 	if err != nil {
 		t.Errorf("Unable to start server: %s", err)
 	}
