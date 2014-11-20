@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,9 @@ const (
 )
 
 func main() {
+
+	port := flag.Int("port", 8000, "Port to start the server on")
+	flag.Parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -45,7 +49,7 @@ func main() {
 	// 	return 404, "Route was not found"
 	// })
 
-	r.Run(":8000")
+	r.Run(fmt.Sprintf(":%d", *port))
 
 }
 

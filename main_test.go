@@ -3,10 +3,13 @@ package main_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"testing"
+	"time"
 )
 
 type DocumentClient struct {
@@ -108,8 +111,37 @@ func (d *DocumentClient) postDocFile(id, contentType, filePath string) (*Documen
 	return &r, nil
 }
 
+func startServer(port string) (*os.Process, error) {
+	cmd := exec.Command("go", "run", "main.go", "-port="+port)
+	err := cmd.Start()
+	return cmd.Process, err
+}
+
+func stopServer(proc *os.Process) error {
+	err := proc.Kill()
+	return err
+}
+
+func prepare(p int, t *testing.T) (*DocumentClient, *os.Process) {
+	port := fmt.Sprintf("%d", p)
+	proc, err := startServer(port)
+	time.Sleep(2500)
+	if err != nil {
+		t.Errorf("Unable to start server: %s", err)
+	}
+	c := NewDocumentClient("http://127.0.0.1:"+port, "document")
+	return c, proc
+}
+
+func teardown(proc *os.Process, t *testing.T) {
+	err := stopServer(proc)
+	if err != nil {
+		t.Errorf("Unable to stop server: %s", err)
+	}
+}
+
 func TestJsonUploadWithKey(t *testing.T) {
-	c := NewDocumentClient("http://127.0.0.1:8000", "document")
+	c, proc := prepare(5051, t)
 	key := "12345678"
 	content := "{'key1': 123, 'key2': 456}"
 	res, err := c.postDoc(key, "application/json", content)
@@ -119,10 +151,11 @@ func TestJsonUploadWithKey(t *testing.T) {
 	if res.Ok != "true" {
 		t.Errorf("Error uploading json '%s', response: %v", content, res)
 	}
+	teardown(proc, t)
 }
 
 func TestJsonDownload(t *testing.T) {
-	c := NewDocumentClient("http://127.0.0.1:8000", "document")
+	c, proc := prepare(5052, t)
 	key := "12345678"
 	expectedContent := "{'key1': 123, 'key2': 456}"
 	res, err := c.getDoc(key)
@@ -132,13 +165,15 @@ func TestJsonDownload(t *testing.T) {
 	if string(res.Data) != expectedContent {
 		t.Errorf("Error downloading json: ", err)
 	}
+	teardown(proc, t)
 }
 
 func TestJsonDelete(t *testing.T) {
-	c := NewDocumentClient("http://127.0.0.1:8000", "document")
+	c, proc := prepare(5053, t)
 	key := "12345678"
 	_, err := c.deleteDoc(key)
 	if err != nil {
 		t.Errorf("Error deleting json: ", err)
 	}
+	teardown(proc, t)
 }
