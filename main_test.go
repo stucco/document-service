@@ -112,7 +112,7 @@ func (d *DocumentClient) postDocFile(id, contentType, filePath string) (*Documen
 }
 
 func startServer(port string) (*os.Process, error) {
-	cmd := exec.Command("go", "run", "main.go", "-port="+port)
+	cmd := exec.Command("go", "run", "main.go", "-port="+port, "-debug")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func startServer(port string) (*os.Process, error) {
 		if bytes.Contains(so, []byte(":"+port)) {
 			break
 		}
-		time.Sleep(50)
+		time.Sleep(250)
 	}
 	return cmd.Process, err
 }
@@ -139,6 +139,7 @@ func stopServer(proc *os.Process) error {
 }
 
 func prepare(p int, t *testing.T) (*DocumentClient, *os.Process) {
+	t.Parallel()
 	port := fmt.Sprintf("%d", p)
 	proc, err := startServer(port)
 	if err != nil {

@@ -19,9 +19,14 @@ const (
 func main() {
 
 	port := flag.Int("port", 8000, "Port to start the server on")
+	debug := flag.Bool("debug", false, "Show debug output")
 	flag.Parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	if !*debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	err := os.MkdirAll(dataDir, 0777)
 	if err != nil {
@@ -49,8 +54,10 @@ func main() {
 	// 	return 404, "Route was not found"
 	// })
 
+	if !*debug {
+		fmt.Printf("Listening and serving on :%d", *port)
+	}
 	r.Run(fmt.Sprintf(":%d", *port))
-
 }
 
 func getDoc(c *gin.Context) {
