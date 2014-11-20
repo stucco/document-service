@@ -125,7 +125,7 @@ func stopServer(proc *os.Process) error {
 func prepare(p int, t *testing.T) (*DocumentClient, *os.Process) {
 	port := fmt.Sprintf("%d", p)
 	proc, err := startServer(port)
-	time.Sleep(2500)
+	time.Sleep(5000)
 	if err != nil {
 		t.Errorf("Unable to start server: %s", err)
 	}
@@ -140,16 +140,29 @@ func teardown(proc *os.Process, t *testing.T) {
 	}
 }
 
+func TestJsonUpload(t *testing.T) {
+	c, proc := prepare(5050, t)
+	content := "{'key1': 123, 'key2': 456}"
+	res, err := c.postDoc("", "application/json", content)
+	if err != nil {
+		t.Errorf("Error uploading json: ", err)
+	}
+	if res.Ok != "true" {
+		t.Errorf("Error uploading json '%s', response: %v", content, res)
+	}
+	teardown(proc, t)
+}
+
 func TestJsonUploadWithKey(t *testing.T) {
 	c, proc := prepare(5051, t)
 	key := "12345678"
 	content := "{'key1': 123, 'key2': 456}"
 	res, err := c.postDoc(key, "application/json", content)
 	if err != nil {
-		t.Errorf("Error uploading json: ", err)
+		t.Errorf("Error uploading json with key: ", err)
 	}
 	if res.Ok != "true" {
-		t.Errorf("Error uploading json '%s', response: %v", content, res)
+		t.Errorf("Error uploading json with key '%s', response: %v", content, res)
 	}
 	teardown(proc, t)
 }
