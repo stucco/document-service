@@ -8,7 +8,7 @@ import (
 	"os"
 	"runtime"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/stucco/document-service/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	"github.com/stucco/document-service/Godeps/_workspace/src/github.com/gin-gonic/gin"
 )
 

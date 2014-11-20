@@ -3,6 +3,11 @@
 	"GoVersion": "go1.3.3",
 	"Deps": [
 		{
+			"ImportPath": "code.google.com/p/go-uuid/uuid",
+			"Comment": "null-12",
+			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
+		},
+		{
 			"ImportPath": "github.com/gin-gonic/gin",
 			"Comment": "v0.4-8-g3b079bb",
 			"Rev": "3b079bb6f79ae501e73a5401c41b589f6616b61e"
