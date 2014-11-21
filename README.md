@@ -1,13 +1,13 @@
 document-service
 ================
 
-## Usage
+Store text files and metadata with an HTTP API
 
 ## API
 
 The API is exposed on `host:port/document/` with the following routes:
 
-* *Get a document*: `GET host:port/document/<id>`. It returns the requested document in the response body if the document exists, or a JSON object if there is an error.
+* *Get a document*: `GET host:port/document/<id>`. It returns a JSON object that describes the success or failure.
 * *Post a document*: `POST host:port/document/` will assign an id, or `POST host:port/document/<id>` to specify the id. It returns a JSON object that describes the success or failure.
 * *Delete a document*: `DELETE host:port/document/<id>`. It returns a JSON object that describes the success or failure.
 
@@ -18,29 +18,33 @@ Below are examples using [`curl`](http://curl.haxx.se). To see examples of a [go
 Upload  a json file:
 
 ```
-curl -XPOST localhost:8000/document/12345 --data "{key1: 'some data', key2: 'more data'}" -i -H "Content-Type: application/json"
+curl -XPOST localhost:8000/document/12345\?extractor=test --data "{key1: 'some data', key2: 'more data'}" -i -H "Content-Type: application/json"
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Wed, 19 Nov 2014 00:06:45 GMT
-Content-Length: 63
+Date: Fri, 21 Nov 2014 01:53:18 GMT
+Content-Length: 61
 
-{"key":"12345","message":"document added with id","ok":"true"}
-```
-
-Upload a binary file:
-```
-curl -XPOST localhost:8000/document/ --data-binary "@/Users/ojg/Downloads/DetailPage.png" -i -H "Content-Type: application/octet-stream"
-HTTP/1.1 100 Continue
-
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Wed, 19 Nov 2014 00:07:42 GMT
-Content-Length: 86
-
-{"key":"68b24d2d-458b-42d9-9c55-b76dc4737ca3","message":"document added","ok":"true"}
+{"ok":"true","key":"12345","message":"saved document by id"}
 ```
 
 Retrieve a file:
 ```
-    curl -XGET -O localhost:8000/document/68b24d2d-458b-42d9-9c55-b76dc4737ca3 -s
+curl -XGET localhost:8000/document/12345 -i
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Fri, 21 Nov 2014 01:54:41 GMT
+Content-Length: 122
+
+{"ok":"true","key":"12345","document":"{key1: 'some data', key2: 'more data'}","timestamp":1416534798,"extractor":"test"}
+```
+
+Delete a file:
+```
+curl -XDELETE localhost:8000/document/12345 -i
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Fri, 21 Nov 2014 01:55:38 GMT
+Content-Length: 57
+
+{"ok":"true","key":"12345","message":"removed document"}
 ```
