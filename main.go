@@ -236,7 +236,7 @@ func saveDocument(key string, c *gin.Context) error {
 	if err != nil {
 		return fmt.Errorf("error copying body to file for key %s: %s", key, err.Error())
 	}
-	extractor := c.Params.ByName("extractor")
+	extractor := c.Request.FormValue("extractor")
 	metadata := DocMetadata{Timestamp: time.Now().Unix(), Extractor: extractor}
 	err = saveMetadata(key, &metadata)
 	if err != nil {
