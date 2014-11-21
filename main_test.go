@@ -1,4 +1,4 @@
-package main_test
+package main
 
 import (
 	"bytes"
@@ -17,53 +17,43 @@ type DocumentClient struct {
 	BasePath string
 }
 
-type DocumentResponse struct {
-	Ok      string `json:"ok"`
-	Key     string `json:"key"`
-	Error   string `json:"error"`
-	Message string `json:"message"`
-	Data    []byte
-}
-
 func NewDocumentClient(addr, base string) *DocumentClient {
 	return &DocumentClient{Address: addr, BasePath: base}
 }
 
-func (d *DocumentClient) getDoc(id string) (*DocumentResponse, error) {
+func (d *DocumentClient) getDoc(id string) (*ResponseType, error) {
 	res, err := http.Get(d.Address + "/" + d.BasePath + "/" + id)
-	defer res.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	result := &DocumentResponse{Key: id}
-	body, err := ioutil.ReadAll(res.Body)
+	// fmt.Println(res.Status)
+	// fmt.Println(res.Header)
+	// fmt.Println(res.Body)
+	r, err := parseResponse(res)
 	if err != nil {
 		return nil, err
 	}
-	result.Data = body
-	return result, nil
+	return r, nil
 }
 
-func (d *DocumentClient) deleteDoc(id string) (*DocumentResponse, error) {
+func (d *DocumentClient) deleteDoc(id string) (*ResponseType, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("DELETE", d.Address+"/"+d.BasePath+"/"+id, nil)
 	if err != nil {
 		return nil, err
 	}
 	res, err := client.Do(req)
-	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
-	var r DocumentResponse
-	err = json.Unmarshal(body, &r)
+	r, err := parseResponse(res)
 	if err != nil {
 		return nil, err
 	}
-	return &r, nil
+	return r, nil
 }
 
-func (d *DocumentClient) postDoc(id, contentType, content string) (*DocumentResponse, error) {
+func (d *DocumentClient) postDoc(id, contentType, content string) (*ResponseType, error) {
 	uri := d.Address + "/" + d.BasePath + "/"
 	if id != "" {
 		uri += id
@@ -73,11 +63,20 @@ func (d *DocumentClient) postDoc(id, contentType, content string) (*DocumentResp
 	if err != nil {
 		return nil, err
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	r, err := parseResponse(res)
 	if err != nil {
 		return nil, err
 	}
-	var r DocumentResponse
+	return r, nil
+}
+
+func parseResponse(res *http.Response) (*ResponseType, error) {
+	body, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	var r ResponseType
 	err = json.Unmarshal(body, &r)
 	if err != nil {
 		return nil, err
@@ -85,34 +84,8 @@ func (d *DocumentClient) postDoc(id, contentType, content string) (*DocumentResp
 	return &r, nil
 }
 
-func (d *DocumentClient) postDocFile(id, contentType, filePath string) (*DocumentResponse, error) {
-	uri := d.Address + "/" + d.BasePath + "/"
-	if id != "" {
-		uri += id
-	}
-	f, err := os.Open(filePath)
-	defer f.Close()
-	if err != nil {
-		return nil, err
-	}
-	res, err := http.Post(uri, contentType, f)
-	if err != nil {
-		return nil, err
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	var r DocumentResponse
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		return nil, err
-	}
-	return &r, nil
-}
-
-func startServer(port string) (*os.Process, error) {
-	cmd := exec.Command("go", "run", "main.go", "-port="+port, "-debug")
+func startServer(port, db string) (*os.Process, error) {
+	cmd := exec.Command("go", "run", "main.go", "-port="+port, "-db-file="+db)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -128,7 +101,7 @@ func startServer(port string) (*os.Process, error) {
 		if err != nil {
 			return nil, err
 		}
-		if bytes.Contains(so, []byte(":"+port)) || waitedFor >= maxWait {
+		if bytes.Contains(so, []byte("on :"+port)) || waitedFor >= maxWait {
 			break
 		}
 		time.Sleep(wait)
@@ -142,10 +115,9 @@ func stopServer(proc *os.Process) error {
 	return err
 }
 
-func prepare(p int, t *testing.T) (*DocumentClient, *os.Process) {
-	t.Parallel()
+func prepare(p int, dbPath string, t *testing.T) (*DocumentClient, *os.Process) {
 	port := fmt.Sprintf("%d", p)
-	proc, err := startServer(port)
+	proc, err := startServer(port, dbPath)
 	if err != nil {
 		t.Errorf("Unable to start server: %s", err)
 	}
@@ -153,60 +125,92 @@ func prepare(p int, t *testing.T) (*DocumentClient, *os.Process) {
 	return c, proc
 }
 
-func teardown(proc *os.Process, t *testing.T) {
+func teardown(proc *os.Process, dbPath string, t *testing.T) {
 	err := stopServer(proc)
 	if err != nil {
 		t.Errorf("Unable to stop server: %s", err)
 	}
+	os.Remove(dbPath)
 }
 
 func TestJsonUpload(t *testing.T) {
-	c, proc := prepare(5050, t)
-	content := "{'key1': 123, 'key2': 456}"
-	res, err := c.postDoc("", "application/json", content)
-	if err != nil {
+	port := 5050
+	db := fmt.Sprintf("test-%d.db", port)
+	testContent := "{\"key1\": 123, \"key2\": 456}"
+	c, proc := prepare(port, db, t)
+	res, err := c.postDoc("", "application/json", testContent)
+	if err != nil || !res.Ok {
 		t.Errorf("Error uploading json: ", err)
 	}
-	if res.Ok != "true" {
-		t.Errorf("Error uploading json '%s', response: %v", content, res)
+	k := res.Key
+	res, err = c.deleteDoc(k)
+	if err != nil || !res.Ok {
+		t.Errorf("Error deleting json: ", err)
 	}
-	teardown(proc, t)
+	teardown(proc, db, t)
 }
 
 func TestJsonUploadWithKey(t *testing.T) {
-	c, proc := prepare(5051, t)
-	key := "12345678"
-	content := "{'key1': 123, 'key2': 456}"
-	res, err := c.postDoc(key, "application/json", content)
-	if err != nil {
+	port := 5051
+	db := fmt.Sprintf("test-%d.db", port)
+	testKey := fmt.Sprintf("k-%d", port)
+	testContent := "{\"key1\": 123, \"key2\": 456}"
+	c, proc := prepare(port, db, t)
+	res, err := c.postDoc(testKey, "application/json", testContent)
+	if err != nil || !res.Ok {
 		t.Errorf("Error uploading json with key: ", err)
 	}
-	if res.Ok != "true" {
-		t.Errorf("Error uploading json with key '%s', response: %v", content, res)
-	}
-	teardown(proc, t)
-}
-
-func TestJsonDownload(t *testing.T) {
-	c, proc := prepare(5052, t)
-	key := "12345678"
-	expectedContent := "{'key1': 123, 'key2': 456}"
-	res, err := c.getDoc(key)
-	if err != nil {
-		t.Errorf("Error downloading json: ", err)
-	}
-	if string(res.Data) != expectedContent {
-		t.Errorf("Error downloading json: ", err)
-	}
-	teardown(proc, t)
-}
-
-func TestJsonDelete(t *testing.T) {
-	c, proc := prepare(5053, t)
-	key := "12345678"
-	_, err := c.deleteDoc(key)
-	if err != nil {
+	res, err = c.deleteDoc(testKey)
+	if err != nil || !res.Ok {
 		t.Errorf("Error deleting json: ", err)
 	}
-	teardown(proc, t)
+	teardown(proc, db, t)
 }
+
+// func TestJsonDownload(t *testing.T) {
+// 	port := 5052
+// 	db := fmt.Sprintf("test-%d.db", port)
+// 	testKey := fmt.Sprintf("k-%d", port)
+// 	testContent := "{\"key1\": 123, \"key2\": 456}"
+// 	c, proc := prepare(port, db, t)
+// 	res, err := c.postDoc(testKey, "application/json", testContent)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error uploading json with key: ", err)
+// 	}
+// 	res, err = c.getDoc(testKey)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error downloading json: ", err)
+// 	}
+// 	res, err = c.deleteDoc(testKey)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error deleting json: ", err)
+// 	}
+// 	fmt.Println(res.Document)
+// 	// if res.Document != testContent {
+// 	// 	t.Errorf("Error downloading json - unexpected content: ", err)
+// 	// }
+// 	teardown(proc, db, t)
+// }
+
+// func TestJsonDownloadNotExist(t *testing.T) {
+// 	c, proc := prepare(5053, t)
+// 	k := "a-non-existant-key"
+// 	res, err := c.getDoc(k)
+// 	if err == nil {
+// 		t.Errorf("Error downloading nonexistant json, should have errrored")
+// 	}
+// 	res, err = c.deleteDoc(key)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error deleting json: ", err)
+// 	}
+// 	teardown(proc, t)
+// }
+
+// func TestJsonDelete(t *testing.T) {
+// 	c, proc := prepare(5054, t)
+// 	res, err := c.deleteDoc(testKey)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error deleting json: ", err)
+// 	}
+// 	teardown(proc, t)
+// }
