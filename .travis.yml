@@ -1,6 +1,3 @@
-branches:
-  only:
-    - golang
 language: go
 go:
   - 1.3
