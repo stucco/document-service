@@ -3,8 +3,10 @@ go:
   - 1.3
   - tip
 before_install: 
-  - go build doc-service.go
-  - ./doc-service -port=8000
+  - pwd
+  - ls
+  - cd $HOME/gopath/src/github.com/stucco/document-service && go build doc-service.go
+  - cd $HOME/gopath/src/github.com/stucco/document-service && ./doc-service -port=8000 &
 install: "echo 'do not run go get - using godep'"
 after_success:
   - wget https://raw.githubusercontent.com/stucco/test/master/rerun-test.sh
