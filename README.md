@@ -1,6 +1,8 @@
 document-service
 ================
 
+[![Gobuild Download](http://gobuild.io/badge/github.com/stucco/document-service/downloads.svg)](http://gobuild.io/github.com/stucco/document-service)
+
 Store text files and metadata with an HTTP API
 
 ## API
