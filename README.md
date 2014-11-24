@@ -13,7 +13,7 @@ The API is exposed on `host:port/document/` with the following routes:
 
 #### Examples
 
-Below are examples using [`curl`](http://curl.haxx.se). To see examples of a [golang](http://golang.org/) application, see the example in the `client` directory.
+Below are examples using [`curl`](http://curl.haxx.se).
 
 Upload  a json file:
 
