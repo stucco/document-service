@@ -3,13 +3,11 @@ description: "Stucco document-service"
 filesets:
   includes:
   - README.md
-  - LICENSE.md
+  - LICENSE
   - Godeps
   excludes:
   - \.git
   - .*\.go
   depth: 8
 settings:
-  # targetdir: ""
-  # outfiles: []
   build: go install -v
