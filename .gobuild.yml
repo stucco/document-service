@@ -1,0 +1,15 @@
+author: "jgoodall@ornl.gov"
+description: "Stucco document-service"
+filesets:
+  includes:
+  - README.md
+  - LICENSE.md
+  - Godeps
+  excludes:
+  - \.git
+  - .*\.go
+  depth: 8
+settings:
+  # targetdir: ""
+  # outfiles: []
+  build: go install -v
