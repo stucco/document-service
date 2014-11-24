@@ -1,3 +1,5 @@
+// This software provides a storage service for text documents and metadata over an HTTP API.
+
 package main
 
 import (
