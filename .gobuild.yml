@@ -4,7 +4,6 @@ filesets:
   includes:
   - README.md
   - LICENSE
-  - Godeps
   excludes:
   - \.git
   - .*\.go
