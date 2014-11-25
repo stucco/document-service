@@ -6,7 +6,10 @@ filesets:
   - LICENSE
   excludes:
   - \.git
+  - Godeps
   - .*\.go
   depth: 8
 settings:
   build: go install -v
+  outfiles:
+    - doc-service
