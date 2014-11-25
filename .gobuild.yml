@@ -10,5 +10,5 @@ filesets:
   depth: 8
 settings:
   build: go install -v
-  outfiles:
-    - doc-service
+#  outfiles:
+#    - doc-service
