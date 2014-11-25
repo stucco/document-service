@@ -6,7 +6,6 @@ filesets:
   - LICENSE
   excludes:
   - \.git
-  - Godeps
   - .*\.go
   depth: 8
 settings:
