@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"runtime"
 	"time"
@@ -21,28 +22,30 @@ import (
 
 // Document metadata to save to database.
 type DocMetadata struct {
-	ContentType int64  `json:"content-type,omitempty"`
-	Name        string `json:"name,omitempty"`
 	Timestamp   int64  `json:"timestamp,omitempty"`
+	Name        string `json:"name,omitempty"`
+	ContentType string `json:"content-type,omitempty"`
 	Extractor   string `json:"extractor,omitempty"`
 }
 
 // Response struct to send as json to client.
 type ResponseType struct {
-	Ok        bool   `json:"ok,string"`
-	Key       string `json:"key,omitempty"`
-	Message   string `json:"message,omitempty"`
-	Error     string `json:"error,omitempty"`
-	Document  string `json:"document,omitempty"`
-	Timestamp int64  `json:"timestamp,omitempty"`
-	Extractor string `json:"extractor,omitempty"`
+	Ok          bool   `json:"ok,string"`
+	Key         string `json:"key,omitempty"`
+	Message     string `json:"message,omitempty"`
+	Error       string `json:"error,omitempty"`
+	Document    string `json:"document,omitempty"`
+	Timestamp   int64  `json:"timestamp,omitempty"`
+	Name        string `json:"name,omitempty"`
+	ContentType string `json:"content-type,omitempty"`
+	Extractor   string `json:"extractor,omitempty"`
 }
 
 const (
 	// HTTP status code - OK
-	statusOk = 200
+	statusOk = http.StatusOK
 	// HTTP status code - StatusInternalServerError
-	statusErr = 500
+	statusErr = http.StatusInternalServerError
 )
 
 var (
@@ -174,15 +177,18 @@ func getDoc(c *gin.Context) {
 		c.JSON(statusErr, newErrorResp(key, "error reading file", err))
 		return
 	}
+
 	metadata, err := getMetadata(key)
 	if err != nil {
 		c.JSON(statusErr, newErrorResp(key, "error reading metadata", err))
 		return
 	}
 	r := newSuccessResp(key, "")
-	r.Document = string(d)
 	r.Timestamp = metadata.Timestamp
+	r.Name = metadata.Name
+	r.ContentType = metadata.ContentType
 	r.Extractor = metadata.Extractor
+	r.Document = string(d)
 	c.JSON(statusOk, r)
 }
 
@@ -240,8 +246,12 @@ func saveDocument(key string, c *gin.Context) error {
 	if err != nil {
 		return fmt.Errorf("error copying body to file for key %s: %s", key, err.Error())
 	}
+	name := c.Request.FormValue("name")
+	contentType := c.Request.Header.Get("Content-Type")
+	fmt.Println(contentType)
+	fmt.Println(c.Request.Header)
 	extractor := c.Request.FormValue("extractor")
-	metadata := DocMetadata{Timestamp: time.Now().Unix(), Extractor: extractor}
+	metadata := DocMetadata{Timestamp: time.Now().Unix(), Name: name, ContentType: contentType, Extractor: extractor}
 	err = saveMetadata(key, &metadata)
 	if err != nil {
 		return fmt.Errorf("error saving metadata for key %s: %s", key, err.Error())
