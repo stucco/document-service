@@ -1,19 +1,10 @@
-Bolt [![Build Status](https://drone.io/github.com/boltdb/bolt/status.png)](https://drone.io/github.com/boltdb/bolt/latest) [![Coverage Status](https://coveralls.io/repos/boltdb/bolt/badge.png?branch=master)](https://coveralls.io/r/boltdb/bolt?branch=master) [![GoDoc](https://godoc.org/github.com/boltdb/bolt?status.png)](https://godoc.org/github.com/boltdb/bolt) ![Project status](http://img.shields.io/status/beta.png?color=blue)
+Bolt [![Build Status](https://drone.io/github.com/boltdb/bolt/status.png)](https://drone.io/github.com/boltdb/bolt/latest) [![Coverage Status](https://coveralls.io/repos/boltdb/bolt/badge.png?branch=master)](https://coveralls.io/r/boltdb/bolt?branch=master) [![GoDoc](https://godoc.org/github.com/boltdb/bolt?status.png)](https://godoc.org/github.com/boltdb/bolt) ![Version](http://img.shields.io/badge/version-1.0-green.png)
 ====
-
-> Simple is the new beautiful.
->
-> — [Tobias Lütke](https://twitter.com/tobi)
-
-
-## Overview
 
 Bolt is a pure Go key/value store inspired by [Howard Chu's][hyc_symas] and
 the [LMDB project][lmdb]. The goal of the project is to provide a simple,
 fast, and reliable database for projects that don't require a full database
-server such as Postgres or MySQL. It is also meant to be educational. Most of
-us use tools without understanding how the underlying data really works. Bolt
-is written so that it's easy to dig in and see what's going on.
+server such as Postgres or MySQL.
 
 Since Bolt is meant to be used as such a low-level piece of functionality,
 simplicity is key. The API will be small and only focus on getting values
@@ -25,11 +16,11 @@ and setting values. That's it.
 
 ## Project Status
 
-Bolt is functionally complete and has nearly full unit test coverage. The
-library test suite also includes randomized black box testing to ensure
-database consistency and thread safety. Bolt is currently in use in many
-projects, however, it is still at a beta stage so please use with caution
-and report any bugs found.
+Bolt is stable and the API is fixed. Full unit test coverage and randomized 
+black box testing are used to ensure database consistency and thread safety.
+Bolt is currently in high-load production environments serving databases as
+large as 1TB. Many companies such as Shopify and Heroku use Bolt-backed
+services every day.
 
 
 ## Getting Started
@@ -133,6 +124,40 @@ You also get a consistent view of the database within this closure, however,
 no mutating operations are allowed within a read-only transaction. You can only
 retrieve buckets, retrieve values, and copy the database within a read-only
 transaction.
+
+#### Managing transactions manually
+
+The `DB.View()` and `DB.Update()` functions are wrappers around the `DB.Begin()`
+function. These helper functions will start the transaction, execute a function,
+and then safely close your transaction if an error is returned. This is the
+recommended way to use Bolt transactions.
+
+However, sometimes you may want to manually start and end your transactions.
+You can use the `Tx.Begin()` function directly but _please_ be sure to close the
+transaction.
+
+```go
+// Start a writable transaction.
+tx, err := db.Begin(true)
+if err != nil {
+    return err
+}
+defer tx.Rollback()
+
+// Use the transaction...
+_, err := tx.CreateBucket([]byte("MyBucket")
+if err != nil {
+    return err
+}
+
+// Commit the transaction and check for error.
+if err := tx.Commit(); err != nil {
+    return err
+}
+```
+
+The first argument to `DB.Begin()` is a boolean stating if the transaction
+should be writable.
 
 
 ### Using buckets
@@ -379,14 +404,52 @@ or to provide an HTTP endpoint that will perform a fixed-length sample.
 
 For more information on getting started with Bolt, check out the following articles:
 
-* [Intro to BoltDB: Painless Performant Persistence](http://blog.natefinch.com/2014/07/intro-to-boltdb-painless-performant.html) by [Nate Finch](https://github.com/natefinch).
+* [Intro to BoltDB: Painless Performant Persistence](http://npf.io/2014/07/intro-to-boltdb-painless-performant-persistence/) by [Nate Finch](https://github.com/natefinch).
 
 
 
-## Comparing Bolt to LMDB
+## Comparison with other databases
+
+### Postgres, MySQL, & other relational databases
+
+Relational databases structure data into rows and are only accessible through
+the use of SQL. This approach provides flexibility in how you store and query
+your data but also incurs overhead in parsing and planning SQL statements. Bolt
+accesses all data by a byte slice key. This makes Bolt fast to read and write
+data by key but provides no built-in support for joining values together.
+
+Most relational databases (with the exception of SQLite) are standalone servers
+that run separately from your application. This gives your systems
+flexibility to connect multiple application servers to a single database
+server but also adds overhead in serializing and transporting data over the
+network. Bolt runs as a library included in your application so all data access
+has to go through your application's process. This brings data closer to your
+application but limits multi-process access to the data.
+
+
+### LevelDB, RocksDB
+
+LevelDB and its derivatives (RocksDB, HyperLevelDB) are similar to Bolt in that
+they are libraries bundled into the application, however, their underlying
+structure is a log-structured merge-tree (LSM tree). An LSM tree optimizes
+random writes by using a write ahead log and multi-tiered, sorted files called
+SSTables. Bolt uses a B+tree internally and only a single file. Both approaches
+have trade offs.
+
+If you require a high random write throughput (>10,000 w/sec) or you need to use
+spinning disks then LevelDB could be a good choice. If your application is
+read-heavy or does a lot of range scans then Bolt could be a good choice.
+
+One other important consideration is that LevelDB does not have transactions.
+It supports batch writing of key/values pairs and it supports read snapshots
+but it will not give you the ability to do a compare-and-swap operation safely.
+Bolt supports fully serializable ACID transactions.
+
+
+### LMDB
 
 Bolt was originally a port of LMDB so it is architecturally similar. Both use
-a B+tree, have ACID semanetics with fully serializable transactions, and support
+a B+tree, have ACID semantics with fully serializable transactions, and support
 lock-free MVCC using a single writer and multiple readers.
 
 The two projects have somewhat diverged. LMDB heavily focuses on raw performance
@@ -394,6 +457,11 @@ while Bolt has focused on simplicity and ease of use. For example, LMDB allows
 several unsafe actions such as direct writes and append writes for the sake of
 performance. Bolt opts to disallow actions which can leave the database in a 
 corrupted state. The only exception to this in Bolt is `DB.NoSync`.
+
+There are also a few differences in API. LMDB requires a maximum mmap size when
+opening an `mdb_env` whereas Bolt will handle incremental mmap resizing
+automatically. LMDB overloads the getter and setter functions with multiple
+flags whereas Bolt splits these specialized cases into their own functions.
 
 
 ## Caveats & Limitations
@@ -449,7 +517,6 @@ Below is a list of public, open source projects that use Bolt:
 * [ChainStore](https://github.com/nulayer/chainstore) - Simple key-value interface to a variety of storage engines organized as a chain of operations.
 * [MetricBase](https://github.com/msiebuhr/MetricBase) - Single-binary version of Graphite.
 * [Gitchain](https://github.com/gitchain/gitchain) - Decentralized, peer-to-peer Git repositories aka "Git meets Bitcoin".
-* [SkyDB](https://github.com/skydb/sky) - Behavioral analytics database.
 * [event-shuttle](https://github.com/sclasen/event-shuttle) - A Unix system service to collect and reliably deliver messages to Kafka.
 * [ipxed](https://github.com/kelseyhightower/ipxed) - Web interface and api for ipxed.
 * [BoltStore](https://github.com/yosssi/boltstore) - Session store using Bolt.
@@ -459,6 +526,7 @@ Below is a list of public, open source projects that use Bolt:
 * [cayley](https://github.com/google/cayley) - Cayley is an open-source graph database using Bolt as optional backend.
 * [bleve](http://www.blevesearch.com/) - A pure Go search engine similar to ElasticSearch that uses Bolt as the default storage backend.
 * [tentacool](https://github.com/optiflows/tentacool) - REST api server to manage system stuff (IP, DNS, Gateway...) on a linux server.
+* [SkyDB](https://github.com/skydb/sky) - Behavioral analytics database.
 
 If you are using Bolt in a project please send a pull request to add it to the list.
 

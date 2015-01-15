@@ -1,25 +1,28 @@
 {
 	"ImportPath": "github.com/stucco/document-service",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
-			"Comment": "null-12",
-			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
+			"Comment": "null-15",
+			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
-			"Comment": "data/v1-254-gd285804",
-			"Rev": "d285804df1760edf4c602ecd901be5d5e67bf982"
+			"Comment": "v1.0-11-g1c6f04b",
+			"Rev": "1c6f04b302d7721bb098f4960fceabfb1b5f3466"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
-			"Comment": "v0.4-8-g3b079bb",
-			"Rev": "3b079bb6f79ae501e73a5401c41b589f6616b61e"
+			"Comment": "v0.4-16-g28b9ff9",
+			"Rev": "28b9ff9e3495dabeaea2da86c100effbf1a68346"
 		},
 		{
 			"ImportPath": "github.com/julienschmidt/httprouter",
-			"Rev": "46807412fe50aaceb73bb57061c2230fd26a1640"
+			"Rev": "aeec11926f7a8fab580383810e1b1bbba99bdaa7"
 		}
 	]
 }
