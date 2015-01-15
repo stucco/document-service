@@ -21,8 +21,10 @@ import (
 
 // Document metadata to save to database.
 type DocMetadata struct {
-	Timestamp int64  `json:"timestamp,omitempty"`
-	Extractor string `json:"extractor,omitempty"`
+	ContentType int64  `json:"content-type,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Timestamp   int64  `json:"timestamp,omitempty"`
+	Extractor   string `json:"extractor,omitempty"`
 }
 
 // Response struct to send as json to client.
@@ -56,7 +58,6 @@ func main() {
 
 	flag.StringVar(&dataDir, "doc-dir", "./data", "Directory to store documents")
 	port := flag.Int("port", 8000, "Port to start the server on")
-	dbFile := flag.String("db-file", "doc.db", "File to store the metadata")
 	debug := flag.Bool("debug", false, "Show debug output")
 	flag.Parse()
 
@@ -64,16 +65,17 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	db = createDb(dbFile, &dbBucket)
+	err := os.MkdirAll(dataDir, 0777)
+	if err != nil {
+		log.Fatalf("Unable to create the data directory %s\n", dataDir)
+	}
+
+	dbFile := dataDir + "/doc.db"
+	db = createDb(&dbFile, &dbBucket)
 	defer db.Close()
 
 	if !*debug {
 		gin.SetMode(gin.ReleaseMode)
-	}
-
-	err := os.MkdirAll(dataDir, 0777)
-	if err != nil {
-		log.Fatalf("Unable to create the data directory %s\n", dataDir)
 	}
 
 	r := gin.New()

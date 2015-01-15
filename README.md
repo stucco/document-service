@@ -5,6 +5,12 @@ document-service
 
 This software provides a storage service for text documents and metadata over an HTTP API.
 
+## Usage
+
+Start the service (use `-h` for options):
+
+    ./doc-service 
+
 ## API
 
 The API is exposed on `host:port/document/` with the following routes:
