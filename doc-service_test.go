@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	port = "8000"
+	port = "8267"
 )
 
 type DocumentClient struct {
