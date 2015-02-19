@@ -248,8 +248,6 @@ func saveDocument(key string, c *gin.Context) error {
 	}
 	name := c.Request.FormValue("name")
 	contentType := c.Request.Header.Get("Content-Type")
-	fmt.Println(contentType)
-	fmt.Println(c.Request.Header)
 	extractor := c.Request.FormValue("extractor")
 	metadata := DocMetadata{Timestamp: time.Now().Unix(), Name: name, ContentType: contentType, Extractor: extractor}
 	err = saveMetadata(key, &metadata)
