@@ -163,23 +163,27 @@ func getDoc(c *gin.Context) {
 	filePath := dataDir + "/" + key
 	fs, err := os.Stat(filePath)
 	if err != nil || fs.Size() <= 0 {
+		log.Printf("Error, key not found: %s", err.Error())
 		c.JSON(statusErr, newErrorResp(key, "key not found", err))
 		return
 	}
 	f, err := os.Open(dataDir + "/" + key)
 	defer f.Close()
 	if err != nil {
+		log.Printf("Error, unable to open data: %s", err.Error())
 		c.JSON(statusErr, newErrorResp(key, "unable to open data", err))
 		return
 	}
 	d, err := ioutil.ReadAll(f)
 	if err != nil {
+		log.Printf("Error reading file: %s", err.Error())
 		c.JSON(statusErr, newErrorResp(key, "error reading file", err))
 		return
 	}
 
 	metadata, err := getMetadata(key)
 	if err != nil {
+		log.Printf("Error reading metadata: %s", err.Error())
 		c.JSON(statusErr, newErrorResp(key, "error reading metadata", err))
 		return
 	}
@@ -197,6 +201,7 @@ func newDoc(c *gin.Context) {
 	key := uuid.New()
 	err := saveDocument(key, c)
 	if err != nil {
+		log.Printf("Error saving document: %s", err.Error())
 		c.JSON(statusErr, newErrorResp(key, "error saving document", err))
 	} else {
 		c.JSON(statusOk, newSuccessResp(key, "saved document"))
@@ -208,6 +213,7 @@ func newDocWithId(c *gin.Context) {
 	key := c.Params.ByName("id")
 	err := saveDocument(key, c)
 	if err != nil {
+		log.Printf("Error saving document: %s", err.Error())
 		c.JSON(statusErr, newErrorResp(key, "error saving document", err))
 	} else {
 		c.JSON(statusOk, newSuccessResp(key, "saved document by id"))
@@ -219,10 +225,12 @@ func deleteDoc(c *gin.Context) {
 	key := c.Params.ByName("id")
 	err := os.Remove(dataDir + "/" + key)
 	if err != nil {
+		log.Printf("Error removing document: %s", err.Error())
 		c.JSON(statusErr, newErrorResp(key, "error removing document", err))
 	} else {
 		err = deleteMetadata(key)
 		if err != nil {
+			log.Printf("Error removing metadata: %s", err.Error())
 			c.JSON(statusErr, newErrorResp(key, "error removing metadata", err))
 		} else {
 			c.JSON(statusOk, newSuccessResp(key, "removed document"))
