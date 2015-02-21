@@ -46,6 +46,8 @@ const (
 	statusOk = http.StatusOK
 	// HTTP status code - StatusInternalServerError
 	statusErr = http.StatusInternalServerError
+	// HTTP custom error code - FileExistsError
+	fileExistsErr = 515
 )
 
 var (
@@ -199,24 +201,28 @@ func getDoc(c *gin.Context) {
 // Add a new document, creating a new v4 UUID.
 func newDoc(c *gin.Context) {
 	key := uuid.New()
-	err := saveDocument(key, c)
-	if err != nil {
-		log.Printf("Error saving document: %s", err.Error())
-		c.JSON(statusErr, newErrorResp(key, "error saving document", err))
+	res := saveDocument(key, c)
+	if res.Ok == false {
+		if res.Message == "file exists" {
+			c.JSON(fileExistsErr, res)
+		} else {
+			log.Printf("Error saving document: %s", res.Error)
+			c.JSON(statusErr, res)
+		}
 	} else {
-		c.JSON(statusOk, newSuccessResp(key, "saved document"))
+		c.JSON(statusOk, res)
 	}
 }
 
 // Add a new document, using the provided id.
 func newDocWithId(c *gin.Context) {
 	key := c.Params.ByName("id")
-	err := saveDocument(key, c)
-	if err != nil {
-		log.Printf("Error saving document: %s", err.Error())
-		c.JSON(statusErr, newErrorResp(key, "error saving document", err))
+	res := saveDocument(key, c)
+	if res.Ok == false {
+		log.Printf("Error saving document: %s", res.Error)
+		c.JSON(statusErr, res)
 	} else {
-		c.JSON(statusOk, newSuccessResp(key, "saved document by id"))
+		c.JSON(statusOk, res)
 	}
 }
 
@@ -239,20 +245,20 @@ func deleteDoc(c *gin.Context) {
 }
 
 // Save document to disk and metadata to database.
-func saveDocument(key string, c *gin.Context) error {
+func saveDocument(key string, c *gin.Context) *ResponseType {
 	filePath := dataDir + "/" + key
 	fi, err := os.Stat(filePath)
 	if err == nil && fi.Size() > 0 {
-		return fmt.Errorf("file already exists for key %s", key)
+		return newErrorResp(key, "file exists", fmt.Errorf("file already exists for key %s", key))
 	}
 	f, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("error creating file for key %s: %s", key, err.Error())
+		return newErrorResp(key, "file creation error", fmt.Errorf("error creating file for key %s: %s", key, err.Error()))
 	}
 	defer f.Close()
 	_, err = io.Copy(f, c.Request.Body)
 	if err != nil {
-		return fmt.Errorf("error copying body to file for key %s: %s", key, err.Error())
+		return newErrorResp(key, "file write error", fmt.Errorf("error copying body to file for key %s: %s", key, err.Error()))
 	}
 	name := c.Request.FormValue("name")
 	contentType := c.Request.Header.Get("Content-Type")
@@ -260,9 +266,9 @@ func saveDocument(key string, c *gin.Context) error {
 	metadata := DocMetadata{Timestamp: time.Now().Unix(), Name: name, ContentType: contentType, Extractor: extractor}
 	err = saveMetadata(key, &metadata)
 	if err != nil {
-		return fmt.Errorf("error saving metadata for key %s: %s", key, err.Error())
+		return newErrorResp(key, "file metadata write error", fmt.Errorf("error saving metadata for key %s: %s", key, err.Error()))
 	}
-	return nil
+	return newSuccessResp(key, "document saved")
 }
 
 // Create a new error response to send to client.
