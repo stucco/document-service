@@ -9,13 +9,13 @@ This software provides a storage service for text documents and metadata over an
 
 Start the service (use `-h` for options):
 
-    ./doc-service 
+    ./doc-service
 
 ## API
 
 The API is exposed on `host:port/document/` with the following routes:
 
-* *Get a document*: `GET host:port/document/<id>`. It returns a JSON object that describes the success or failure.
+* *Get a document*: `GET host:port/document/<id>`. It returns a JSON object of the document and meta-data and that also describes the success or failure.
 * *Post a document*: `POST host:port/document/` will assign an id, or `POST host:port/document/<id>` to specify the id. It returns a JSON object that describes the success or failure.
 * *Delete a document*: `DELETE host:port/document/<id>`. It returns a JSON object that describes the success or failure.
 
@@ -28,7 +28,7 @@ Below are examples using [`curl`](http://curl.haxx.se).
 Upload a json file:
 
 ```
-curl -XPOST localhost:8000/document/12345\?extractor=test --data "{key1: 'some data', key2: 'more data'}" -i -H "Content-Type: application/json"
+curl -XPOST localhost:8000/document/12345\?extractor\=test\&title\=test --data "{key1: 'some data', key2: 'more data'}" -i -H "Content-Type: application/json"
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Fri, 21 Nov 2014 01:53:18 GMT

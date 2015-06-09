@@ -20,25 +20,31 @@ import (
 	"github.com/stucco/document-service/Godeps/_workspace/src/github.com/gin-gonic/gin"
 )
 
-// Document metadata to save to database.
+// DocMetadata struct for document metadata to save to database.
 type DocMetadata struct {
-	Timestamp   int64  `json:"timestamp,omitempty"`
-	Name        string `json:"name,omitempty"`
-	ContentType string `json:"content-type,omitempty"`
-	Extractor   string `json:"extractor,omitempty"`
+	Timestamp        int64  `json:"timestamp,omitempty"`
+	Name             string `json:"name,omitempty"`
+	ContentType      string `json:"content-type,omitempty"`
+	Extractor        string `json:"extractor,omitempty"`
+	Title            string `json:"title,omitempty"`
+	CreationDate     string `json:"creation-date,omitempty"`
+	ModificationDate string `json:"modification-date,omitempty"`
 }
 
-// Response struct to send as json to client.
+// ResponseType struct to send as json to client.
 type ResponseType struct {
-	Ok          bool   `json:"ok,string"`
-	Key         string `json:"key,omitempty"`
-	Message     string `json:"message,omitempty"`
-	Error       string `json:"error,omitempty"`
-	Document    string `json:"document,omitempty"`
-	Timestamp   int64  `json:"timestamp,omitempty"`
-	Name        string `json:"name,omitempty"`
-	ContentType string `json:"content-type,omitempty"`
-	Extractor   string `json:"extractor,omitempty"`
+	Ok               bool   `json:"ok,string"`
+	Key              string `json:"key,omitempty"`
+	Message          string `json:"message,omitempty"`
+	Error            string `json:"error,omitempty"`
+	Document         string `json:"document,omitempty"`
+	Timestamp        int64  `json:"timestamp,omitempty"`
+	Name             string `json:"name,omitempty"`
+	ContentType      string `json:"content-type,omitempty"`
+	Extractor        string `json:"extractor,omitempty"`
+	Title            string `json:"title,omitempty"`
+	CreationDate     string `json:"creation-date,omitempty"`
+	ModificationDate string `json:"modification-date,omitempty"`
 }
 
 const (
@@ -194,6 +200,9 @@ func getDoc(c *gin.Context) {
 	r.Name = metadata.Name
 	r.ContentType = metadata.ContentType
 	r.Extractor = metadata.Extractor
+	r.Title = metadata.Title
+	r.CreationDate = metadata.CreationDate
+	r.ModificationDate = metadata.ModificationDate
 	r.Document = string(d)
 	c.JSON(statusOk, r)
 }
@@ -263,7 +272,18 @@ func saveDocument(key string, c *gin.Context) *ResponseType {
 	name := c.Request.FormValue("name")
 	contentType := c.Request.Header.Get("Content-Type")
 	extractor := c.Request.FormValue("extractor")
-	metadata := DocMetadata{Timestamp: time.Now().Unix(), Name: name, ContentType: contentType, Extractor: extractor}
+	title := c.Request.FormValue("dc:title")
+	creation := c.Request.FormValue("dcterms:created")
+	modification := c.Request.FormValue("dcterms:modified")
+	metadata := DocMetadata{
+		Timestamp:        time.Now().Unix(),
+		Name:             name,
+		ContentType:      contentType,
+		Extractor:        extractor,
+		Title:            title,
+		CreationDate:     creation,
+		ModificationDate: modification,
+	}
 	err = saveMetadata(key, &metadata)
 	if err != nil {
 		return newErrorResp(key, "file metadata write error", fmt.Errorf("error saving metadata for key %s: %s", key, err.Error()))
