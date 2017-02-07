@@ -1,4 +1,7 @@
 doc-service
+doc-service_darwin_amd64
+doc-service_linux_amd64
+doc-service_windows_amd64
 # application directories
 *.db
 data
