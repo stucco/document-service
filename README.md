@@ -99,8 +99,14 @@ for os in "${oses[@]}"; do
 done
 ```
 
-To remove all versions:
+To remove all existing builds:
 
 ```
 rm doc-service_{darwin,linux,windows}_amd64
+```
+
+To test:
+
+```
+go test .
 ```

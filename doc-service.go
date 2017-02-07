@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -58,48 +59,66 @@ const (
 	fileExistsErr = 515
 )
 
+const (
+	// Default port.
+	defaultPort = 8000
+	// Default directory to store the databse.
+	dataDir = "data"
+	// Database file name.
+	dbFileName = "doc.db"
+)
+
+// Essentially constants.
 var (
+	// Database bucket to put metadata in.
+	dbBucket = []byte("DocMetadata")
+	// Database file path.
+	dbFilePath = path.Join(dataDir, dbFileName)
+)
+
+var (
+	// Verbose logging.
+	verbose bool
+	// Use GZIP compression.
+	useGzip bool
 	// Database instance.
 	db *bolt.DB
-	// Database bucket to put metadata in.
-	dbBucket []byte
-	// Relative or absolute path to the directory to save documents in.
-	dataDir string
 )
 
 func main() {
-
-	flag.StringVar(&dataDir, "doc-dir", "./data", "Directory to store documents")
-	port := flag.Int("port", 8000, "Port to start the server on")
-	verbose := flag.Bool("debug", false, "Show verbose output")
-	useGzip := flag.Bool("gzip", false, "Use gzip compression")
+	port := flag.Int("port", defaultPort, "Port to start the server on")
+	flag.BoolVar(&verbose, "debug", false, "Show verbose output")
+	flag.BoolVar(&useGzip, "gzip", false, "Use gzip compression")
 	flag.Parse()
 
-	addr := fmt.Sprintf(":%d", *port)
-	dbBucket = []byte("DocMetadata")
+	var e *echo.Echo
+	e = EchoEngine(*port)
 
 	err := os.MkdirAll(dataDir, 0777)
 	if err != nil {
 		log.Fatalf("Unable to create the data directory %s\n", dataDir)
 	}
-
-	dbFile := dataDir + "/doc.db"
-	db = createDb(&dbFile, &dbBucket)
+	db = createDb(dbFilePath, dbBucket)
 	defer db.Close()
 
-	e := echo.New()
+	graceful.ListenAndServe(e.Server, 5*time.Second)
+}
+
+// EchoEngine will create the database and http handler.
+func EchoEngine(port int) (e *echo.Echo) {
+	e = echo.New()
 
 	e.Pre(middleware.RemoveTrailingSlash())
 
 	e.Logger.SetOutput(os.Stderr)
 	e.Use(middleware.Logger())
-	if *verbose {
+	if verbose {
 		e.Logger.SetLevel(glog.INFO)
 	} else {
-		e.Logger.SetLevel(glog.WARN)
+		e.Logger.SetLevel(glog.ERROR)
 	}
 
-	if *useGzip {
+	if useGzip {
 		e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 			Level: 5,
 		}))
@@ -123,28 +142,28 @@ func main() {
 	// or failure.
 	docRoutes.DELETE("/:id", deleteDoc)
 
-	e.Server.Addr = addr
+	e.Server.Addr = fmt.Sprintf(":%d", port)
 	e.Server.WriteTimeout = 90 * time.Second
 	e.Server.ReadTimeout = 60 * time.Second
 
-	graceful.ListenAndServe(e.Server, 5*time.Second)
+	return e
 }
 
 // Create and return the bolt database for storing metadata.
-func createDb(f *string, bucket *[]byte) *bolt.DB {
-	database, err := bolt.Open(*f, 0600, &bolt.Options{Timeout: 1 * time.Second})
+func createDb(f string, bucket []byte) *bolt.DB {
+	database, err := bolt.Open(f, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		log.Fatalf("Unable to create the metadata database %s: %s", *f, err)
+		log.Fatalf("Unable to create the metadata database %s: %s", f, err)
 	}
 	err = database.Update(func(tx *bolt.Tx) error {
-		_, err2 := tx.CreateBucketIfNotExists(*bucket)
+		_, err2 := tx.CreateBucketIfNotExists(bucket)
 		if err2 != nil {
-			log.Fatalf("Unable to create the metadata database bucket %s: %s", *bucket, err2)
+			log.Fatalf("Unable to create the metadata database bucket %s: %s", bucket, err2)
 		}
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("Unable to update the metadata database bucket %s: %s", *bucket, err)
+		log.Fatalf("Unable to update the metadata database bucket %s: %s", bucket, err)
 	}
 	return database
 }

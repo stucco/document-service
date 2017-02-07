@@ -1,17 +1,20 @@
 language: go
+
 go:
-- 1.4
+- 1.6.x
+- 1.7.x
 - tip
-before_install:
-- go run doc-service.go -port=8267 &
-- sleep 10
-install: echo 'do not run go get - using godep'
+
+script: go test .
+
 after_success:
 - wget https://raw.githubusercontent.com/stucco/test/master/rerun-test.sh
 - chmod a+x ./rerun-test.sh
 - "./rerun-test.sh"
+
 notifications:
   slack: sava:lB0VBcWKom3VNlr126hyI04E
+
 deploy:
   provider: releases
   api_key:

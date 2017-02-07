@@ -1,131 +1,151 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"testing"
+
+	"github.com/appleboy/gofight"
+	"github.com/boltdb/bolt"
+	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
-	port = "8267"
+	testPort      = 8123
+	testKey       = "123"
+	testTitle     = "test-title"
+	testExtractor = "test-extractor"
 )
 
-type DocClient struct {
-	Address  string
-	BasePath string
+var (
+	engine   *echo.Echo
+	testJSON = `{
+		"a": 1,
+		"b": 2
+	}`
+)
+
+func TestMain(m *testing.M) {
+	// Setup before tests.
+	dataDirExists := false
+	tmpDataDir := "tempDataDir"
+	// If there is an existing directory, move it out of the way.
+	if _, err := os.Stat(dataDir); err == nil {
+		fmt.Printf("Moving original data dir '%s'...\n", dataDir)
+		os.Rename(dataDir, tmpDataDir)
+		dataDirExists = true
+	}
+
+	// Setup the router.
+	engine = EchoEngine(testPort)
+
+	// Setup the database.
+	err := os.MkdirAll(dataDir, 0777)
+	if err != nil {
+		log.Fatalf("Unable to create the data directory %s\n", dataDir)
+	}
+	db = createDb(dbFilePath, dbBucket)
+	defer db.Close()
+	fmt.Printf("database created '%s'\n", dbFilePath)
+
+	// Run the tests.
+	retCode := m.Run()
+
+	// Teardown after tests.
+	fmt.Printf("Cleaning up test data dir '%s'...\n", dataDir)
+	if err := os.RemoveAll(dataDir); err != nil {
+		fmt.Printf("Unable to cleanup directory '%s': %s\n", dataDir, err.Error())
+		os.Exit(1)
+	}
+	if dataDirExists {
+		fmt.Printf("Moving original data dir '%s' back...\n", dataDir)
+		os.Rename(tmpDataDir, dataDir)
+	}
+
+	os.Exit(retCode)
 }
 
-func NewDocClient(addr, base string) *DocClient {
-	return &DocClient{Address: addr, BasePath: base}
+func TestPostJSONDoc(t *testing.T) {
+	r := gofight.New()
+	r.POST("/document").
+		SetBody(testJSON).
+		SetDebug(true).
+		Run(engine, func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
+			assert.Equal(t, http.StatusOK, r.Code)
+			data := []byte(r.Body.String())
+			var resp ResponseType
+			err := json.Unmarshal(data, &resp)
+			if assert.NoError(t, err) {
+				assert.True(t, resp.Ok, "Response ok should be true")
+			}
+			cleanupDoc(t, resp.Key)
+		})
 }
 
-func (d *DocClient) getDoc(id string) (*ResponseType, error) {
-	res, err := http.Get(d.Address + "/" + d.BasePath + "/" + id)
-	if err != nil {
-		return nil, err
-	}
-	r, err := parseResponse(res)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
+// The document created here is used for testing GET and DELETE.
+func TestPostJSONDocWithID(t *testing.T) {
+	r := gofight.New()
+	r.POST("/document/"+testKey).
+		SetQuery(gofight.H{
+			"extractor": testExtractor,
+			"dc:title":  testTitle,
+		}).
+		SetBody(testJSON).
+		SetDebug(true).
+		Run(engine, func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
+			assert.Equal(t, http.StatusOK, r.Code)
+			data := []byte(r.Body.String())
+			var resp ResponseType
+			err := json.Unmarshal(data, &resp)
+			if assert.NoError(t, err) {
+				assert.True(t, resp.Ok, "Response ok should be true")
+				assert.Equal(t, testKey, resp.Key, "ID key should be equal")
+			}
+		})
 }
 
-func (d *DocClient) deleteDoc(id string) (*ResponseType, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest("DELETE", d.Address+"/"+d.BasePath+"/"+id, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	r, err := parseResponse(res)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
+func TestGetJSONDoc(t *testing.T) {
+	r := gofight.New()
+	r.GET("/document/"+testKey).
+		SetDebug(true).
+		Run(engine, func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
+			assert.Equal(t, http.StatusOK, r.Code)
+			data := []byte(r.Body.String())
+			var resp ResponseType
+			err := json.Unmarshal(data, &resp)
+			if assert.NoError(t, err) {
+				assert.True(t, resp.Ok, "Response ok should be true")
+				assert.JSONEq(t, testJSON, resp.Document)
+				assert.Equal(t, testExtractor, resp.Extractor, "Extractor metadata should match")
+				assert.Equal(t, testTitle, resp.Title, "Title metadata should match")
+			}
+		})
 }
 
-func (d *DocClient) postDoc(id, contentType, content string) (*ResponseType, error) {
-	uri := d.Address + "/" + d.BasePath + "/"
-	if id != "" {
-		uri += id
-	}
-	buf := bytes.NewBufferString(content)
-	res, err := http.Post(uri, contentType, buf)
-	if err != nil {
-		return nil, err
-	}
-	r, err := parseResponse(res)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
+func TestDeleteJSONDoc(t *testing.T) {
+	r := gofight.New()
+	r.DELETE("/document/"+testKey).
+		SetDebug(true).
+		Run(engine, func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
+			assert.Equal(t, http.StatusOK, r.Code)
+			data := []byte(r.Body.String())
+			var resp ResponseType
+			err := json.Unmarshal(data, &resp)
+			if assert.NoError(t, err) {
+				assert.True(t, resp.Ok, "Response ok should be true")
+			}
+		})
 }
 
-func parseResponse(res *http.Response) (*ResponseType, error) {
-	body, err := ioutil.ReadAll(res.Body)
-	defer res.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-	var r ResponseType
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		return nil, err
-	}
-	return &r, nil
+func cleanupDoc(t *testing.T, key string) {
+	errFile := os.Remove(dataDir + "/" + key)
+	assert.NoError(t, errFile)
+	errDB := db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(dbBucket).Delete([]byte(key))
+	})
+	assert.NoError(t, errDB)
 }
-
-func TestJSONUpload(t *testing.T) {
-	testContent := "{\"k1\": 123, \"k2\": 456}"
-	c := NewDocClient("http://127.0.0.1:"+port, "document")
-	res, err := c.postDoc("", "application/json", testContent)
-	if err != nil || !res.Ok {
-		t.Errorf("Error uploading json: %s", err.Error())
-	}
-	k := res.Key
-	res, err = c.deleteDoc(k)
-	if err != nil || !res.Ok {
-		t.Errorf("Error deleting json: %s", err.Error())
-	}
-}
-
-// func TestJSONUploadWithKey(t *testing.T) {
-// 	testKey := "2345-6789"
-// 	testContent := "{\"k1\": 123, \"k2\": 456}"
-// 	c := NewDocClient("http://127.0.0.1:"+port, "document")
-// 	res, err := c.postDoc(testKey, "application/json", testContent)
-// 	if err != nil || !res.Ok {
-// 		t.Errorf("Error uploading json with key: %s", err.Error())
-// 	}
-// 	res, err = c.deleteDoc(testKey)
-// 	if err != nil || !res.Ok {
-// 		t.Errorf("Error deleting json: %s", err.Error())
-// 	}
-// }
-//
-// func TestJSONDownload(t *testing.T) {
-// 	testKey := "2345-6789"
-// 	testContent := "{\"k1\": 123, \"k2\": 456}"
-// 	c := NewDocClient("http://127.0.0.1:"+port, "document")
-// 	res, err := c.postDoc(testKey, "application/json", testContent)
-// 	if err != nil || !res.Ok {
-// 		t.Errorf("Error uploading json with key: %s", err.Error())
-// 	}
-// 	res, err = c.getDoc(testKey)
-// 	if err != nil || !res.Ok {
-// 		t.Errorf("Error downloading json: %s", err.Error())
-// 	}
-// 	if res.Document != testContent {
-// 		t.Errorf("Error downloading json - unexpected content for document with key %s:\n %s", testKey, err.Error())
-// 	}
-// 	res, err = c.deleteDoc(testKey)
-// 	if err != nil || !res.Ok {
-// 		t.Errorf("Error deleting json: %s", err.Error())
-// 	}
-// }
