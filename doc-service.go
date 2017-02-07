@@ -261,6 +261,8 @@ func deleteDoc(c echo.Context) error {
 
 // Save document to disk and metadata to database.
 func saveDocument(key string, c echo.Context) *ResponseType {
+	body := c.Request().Body
+	defer body.Close()
 	filePath := dataDir + "/" + key
 	fi, err := os.Stat(filePath)
 	if err == nil && fi.Size() > 0 {
@@ -271,7 +273,10 @@ func saveDocument(key string, c echo.Context) *ResponseType {
 		return newErrorResp(key, "file creation error", fmt.Errorf("error creating file for key %s: %s", key, err.Error()))
 	}
 	defer f.Close()
-	_, err = io.Copy(f, c.Request().Body)
+	size, err := io.Copy(f, body)
+	if size == 0 {
+		return newErrorResp("", "input error", fmt.Errorf("no data uploaded"))
+	}
 	if err != nil {
 		return newErrorResp(key, "file write error", fmt.Errorf("error copying body to file for key %s: %s", key, err.Error()))
 	}
@@ -294,7 +299,7 @@ func saveDocument(key string, c echo.Context) *ResponseType {
 	if err != nil {
 		return newErrorResp(key, "file metadata write error", fmt.Errorf("error saving metadata for key %s: %s", key, err.Error()))
 	}
-	return newSuccessResp(key, "document saved")
+	return newSuccessResp(key, fmt.Sprintf("document saved (%d bytes)", size))
 }
 
 // Create a new error response to send to client.
