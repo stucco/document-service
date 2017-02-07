@@ -1,7 +1,7 @@
 document-service
 ================
 
-[![Gobuild Download](http://gobuild.io/badge/github.com/stucco/document-service/downloads.svg)](http://gobuild.io/github.com/stucco/document-service)
+[![Build Status](https://travis-ci.org/stucco/document-service.svg?branch=master)](https://travis-ci.org/stucco/document-service)
 
 This software provides a storage service for text documents and metadata over an HTTP API.
 
