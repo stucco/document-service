@@ -78,3 +78,29 @@ Download an image file; this example uses [jq](http://stedolan.github.io/jq/) to
 ```
 curl -XGET localhost:8000/document/1de60b72-e91b-4a26-9466-86f0d3ccdf7f --silent | jq --raw-output .document | base64 -D > file.png
 ```
+
+
+## Development
+
+To build for the current OS/arch:
+
+```
+go build doc-service.go
+```
+
+To build for mac, linux and windows on 64 bit:
+
+```
+oses=( darwin linux windows )
+for os in "${oses[@]}"; do
+  out="doc-service_${os}_amd64"
+  echo "Building ${out}..."
+  env CGO_ENABLED=0 GOOS=$os GOARCH=amd64 go build -o $out -a -tags netgo
+done
+```
+
+To remove all versions:
+
+```
+rm doc-service_{darwin,linux,windows}_amd64
+```

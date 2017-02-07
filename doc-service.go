@@ -12,12 +12,14 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 
-	"github.com/stucco/document-service/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
-	"github.com/stucco/document-service/Godeps/_workspace/src/github.com/boltdb/bolt"
-	"github.com/stucco/document-service/Godeps/_workspace/src/github.com/gin-gonic/gin"
+	"github.com/boltdb/bolt"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
+	glog "github.com/labstack/gommon/log"
+	"github.com/satori/go.uuid"
+	"github.com/tylerb/graceful"
 )
 
 // DocMetadata struct for document metadata to save to database.
@@ -69,12 +71,12 @@ func main() {
 
 	flag.StringVar(&dataDir, "doc-dir", "./data", "Directory to store documents")
 	port := flag.Int("port", 8000, "Port to start the server on")
-	debug := flag.Bool("debug", false, "Show debug output")
+	verbose := flag.Bool("debug", false, "Show verbose output")
+	useGzip := flag.Bool("gzip", false, "Use gzip compression")
 	flag.Parse()
 
+	addr := fmt.Sprintf(":%d", *port)
 	dbBucket = []byte("DocMetadata")
-
-	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	err := os.MkdirAll(dataDir, 0777)
 	if err != nil {
@@ -85,46 +87,66 @@ func main() {
 	db = createDb(&dbFile, &dbBucket)
 	defer db.Close()
 
-	if !*debug {
-		gin.SetMode(gin.ReleaseMode)
+	e := echo.New()
+
+	e.Pre(middleware.RemoveTrailingSlash())
+
+	e.Logger.SetOutput(os.Stderr)
+	e.Use(middleware.Logger())
+	if *verbose {
+		e.Logger.SetLevel(glog.INFO)
+	} else {
+		e.Logger.SetLevel(glog.WARN)
 	}
 
-	r := gin.New()
-	r.Use(gin.Recovery())
-
-	docs := r.Group("/document")
-	{
-		// Get a document by the document id. Contents are returned in the response body.
-		// If there is a failure, the HTTP header and JSON response will indicate it.
-		docs.GET("/:id", getDoc)
-		// Add a new document, passing an id. JSON response indicates success or failure.
-		docs.POST("/:id", newDocWithId)
-		// Add a new document, with an assigned id. JSON response indicates success or failure.
-		docs.POST("/", newDoc)
-		// Remove a document based on the id. JSON response indicates success or failure.
-		docs.DELETE("/:id", deleteDoc)
+	if *useGzip {
+		e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+			Level: 5,
+		}))
 	}
 
-	if !*debug {
-		fmt.Printf("Listening and serving on :%d", *port)
-	}
-	r.Run(fmt.Sprintf(":%d", *port))
+	e.Use(middleware.Recover())
+
+	docRoutes := e.Group("/document")
+	// Get a document by the document id. Contents are returned in the
+	// response body.
+	// If there is a failure, the HTTP header and JSON response will
+	// indicate it.
+	docRoutes.GET("/:id", getDoc)
+	// Add a new document, with an assigned id. JSON response indicates
+	// success or failure.
+	docRoutes.POST("", newDoc)
+	// Add a new document, passing an id. JSON response indicates success
+	// or failure.
+	docRoutes.POST("/:id", newDocWithID)
+	// Remove a document based on the id. JSON response indicates success
+	// or failure.
+	docRoutes.DELETE("/:id", deleteDoc)
+
+	e.Server.Addr = addr
+	e.Server.WriteTimeout = 90 * time.Second
+	e.Server.ReadTimeout = 60 * time.Second
+
+	graceful.ListenAndServe(e.Server, 5*time.Second)
 }
 
 // Create and return the bolt database for storing metadata.
 func createDb(f *string, bucket *[]byte) *bolt.DB {
-	db, err := bolt.Open(*f, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	database, err := bolt.Open(*f, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		log.Fatalf("Unable to create the metadata database %s: %s", *f, err)
 	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(*bucket)
-		if err != nil {
-			log.Fatalf("Unable to create the metadata database bucket %s: %s", *bucket, err)
+	err = database.Update(func(tx *bolt.Tx) error {
+		_, err2 := tx.CreateBucketIfNotExists(*bucket)
+		if err2 != nil {
+			log.Fatalf("Unable to create the metadata database bucket %s: %s", *bucket, err2)
 		}
 		return nil
 	})
-	return db
+	if err != nil {
+		log.Fatalf("Unable to update the metadata database bucket %s: %s", *bucket, err)
+	}
+	return database
 }
 
 // Add metadata to the database.
@@ -137,8 +159,8 @@ func saveMetadata(key string, metadata *DocMetadata) error {
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(dbBucket)
-		err := b.Put([]byte(key), buf.Bytes())
-		return err
+		err2 := b.Put([]byte(key), buf.Bytes())
+		return err2
 	})
 	return err
 }
@@ -166,34 +188,26 @@ func deleteMetadata(id string) error {
 }
 
 // Get a document and metadata.
-func getDoc(c *gin.Context) {
-	key := c.Params.ByName("id")
+func getDoc(c echo.Context) error {
+	key := c.Param("id")
 	filePath := dataDir + "/" + key
 	fs, err := os.Stat(filePath)
 	if err != nil || fs.Size() <= 0 {
-		log.Printf("Error, key not found: %s", err.Error())
-		c.JSON(statusErr, newErrorResp(key, "key not found", err))
-		return
+		return c.JSON(statusErr, newErrorResp(key, "key not found", err))
 	}
 	f, err := os.Open(dataDir + "/" + key)
 	defer f.Close()
 	if err != nil {
-		log.Printf("Error, unable to open data: %s", err.Error())
-		c.JSON(statusErr, newErrorResp(key, "unable to open data", err))
-		return
+		return c.JSON(statusErr, newErrorResp(key, "unable to open data", err))
 	}
 	d, err := ioutil.ReadAll(f)
 	if err != nil {
-		log.Printf("Error reading file: %s", err.Error())
-		c.JSON(statusErr, newErrorResp(key, "error reading file", err))
-		return
+		return c.JSON(statusErr, newErrorResp(key, "error reading file", err))
 	}
 
 	metadata, err := getMetadata(key)
 	if err != nil {
-		log.Printf("Error reading metadata: %s", err.Error())
-		c.JSON(statusErr, newErrorResp(key, "error reading metadata", err))
-		return
+		return c.JSON(statusErr, newErrorResp(key, "error reading metadata", err))
 	}
 	r := newSuccessResp(key, "")
 	r.Timestamp = metadata.Timestamp
@@ -204,57 +218,49 @@ func getDoc(c *gin.Context) {
 	r.CreationDate = metadata.CreationDate
 	r.ModificationDate = metadata.ModificationDate
 	r.Document = string(d)
-	c.JSON(statusOk, r)
+
+	return c.JSON(statusOk, r)
 }
 
 // Add a new document, creating a new v4 UUID.
-func newDoc(c *gin.Context) {
-	key := uuid.New()
+func newDoc(c echo.Context) error {
+	key := uuid.NewV4().String()
 	res := saveDocument(key, c)
 	if res.Ok == false {
 		if res.Message == "file exists" {
-			c.JSON(fileExistsErr, res)
-		} else {
-			log.Printf("Error saving document: %s", res.Error)
-			c.JSON(statusErr, res)
+			return c.JSON(fileExistsErr, res)
 		}
-	} else {
-		c.JSON(statusOk, res)
+		return c.JSON(statusErr, res)
 	}
+	return c.JSON(statusOk, res)
 }
 
 // Add a new document, using the provided id.
-func newDocWithId(c *gin.Context) {
-	key := c.Params.ByName("id")
+func newDocWithID(c echo.Context) error {
+	key := c.Param("id")
 	res := saveDocument(key, c)
 	if res.Ok == false {
-		log.Printf("Error saving document: %s", res.Error)
-		c.JSON(statusErr, res)
-	} else {
-		c.JSON(statusOk, res)
+		return c.JSON(statusErr, res)
 	}
+	return c.JSON(statusOk, res)
 }
 
 // Delete document from disk and metadata from database.
-func deleteDoc(c *gin.Context) {
-	key := c.Params.ByName("id")
+func deleteDoc(c echo.Context) error {
+	key := c.Param("id")
 	err := os.Remove(dataDir + "/" + key)
 	if err != nil {
-		log.Printf("Error removing document: %s", err.Error())
-		c.JSON(statusErr, newErrorResp(key, "error removing document", err))
-	} else {
-		err = deleteMetadata(key)
-		if err != nil {
-			log.Printf("Error removing metadata: %s", err.Error())
-			c.JSON(statusErr, newErrorResp(key, "error removing metadata", err))
-		} else {
-			c.JSON(statusOk, newSuccessResp(key, "removed document"))
-		}
+		return c.JSON(statusErr, newErrorResp(key, "error removing document", err))
 	}
+	err = deleteMetadata(key)
+	if err != nil {
+		return c.JSON(statusErr, newErrorResp(key, "error removing metadata", err))
+	}
+	return c.JSON(statusOk, newSuccessResp(key, "removed document"))
 }
 
 // Save document to disk and metadata to database.
-func saveDocument(key string, c *gin.Context) *ResponseType {
+func saveDocument(key string, c echo.Context) *ResponseType {
 	filePath := dataDir + "/" + key
 	fi, err := os.Stat(filePath)
 	if err == nil && fi.Size() > 0 {
@@ -265,16 +271,16 @@ func saveDocument(key string, c *gin.Context) *ResponseType {
 		return newErrorResp(key, "file creation error", fmt.Errorf("error creating file for key %s: %s", key, err.Error()))
 	}
 	defer f.Close()
-	_, err = io.Copy(f, c.Request.Body)
+	_, err = io.Copy(f, c.Request().Body)
 	if err != nil {
 		return newErrorResp(key, "file write error", fmt.Errorf("error copying body to file for key %s: %s", key, err.Error()))
 	}
-	name := c.Request.FormValue("name")
-	contentType := c.Request.Header.Get("Content-Type")
-	extractor := c.Request.FormValue("extractor")
-	title := c.Request.FormValue("dc:title")
-	creation := c.Request.FormValue("dcterms:created")
-	modification := c.Request.FormValue("dcterms:modified")
+	name := c.Request().FormValue("name")
+	contentType := c.Request().Header.Get("Content-Type")
+	extractor := c.Request().FormValue("extractor")
+	title := c.Request().FormValue("dc:title")
+	creation := c.Request().FormValue("dcterms:created")
+	modification := c.Request().FormValue("dcterms:modified")
 	metadata := DocMetadata{
 		Timestamp:        time.Now().Unix(),
 		Name:             name,

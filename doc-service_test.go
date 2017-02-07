@@ -12,16 +12,16 @@ const (
 	port = "8267"
 )
 
-type DocumentClient struct {
+type DocClient struct {
 	Address  string
 	BasePath string
 }
 
-func NewDocumentClient(addr, base string) *DocumentClient {
-	return &DocumentClient{Address: addr, BasePath: base}
+func NewDocClient(addr, base string) *DocClient {
+	return &DocClient{Address: addr, BasePath: base}
 }
 
-func (d *DocumentClient) getDoc(id string) (*ResponseType, error) {
+func (d *DocClient) getDoc(id string) (*ResponseType, error) {
 	res, err := http.Get(d.Address + "/" + d.BasePath + "/" + id)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (d *DocumentClient) getDoc(id string) (*ResponseType, error) {
 	return r, nil
 }
 
-func (d *DocumentClient) deleteDoc(id string) (*ResponseType, error) {
+func (d *DocClient) deleteDoc(id string) (*ResponseType, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("DELETE", d.Address+"/"+d.BasePath+"/"+id, nil)
 	if err != nil {
@@ -50,7 +50,7 @@ func (d *DocumentClient) deleteDoc(id string) (*ResponseType, error) {
 	return r, nil
 }
 
-func (d *DocumentClient) postDoc(id, contentType, content string) (*ResponseType, error) {
+func (d *DocClient) postDoc(id, contentType, content string) (*ResponseType, error) {
 	uri := d.Address + "/" + d.BasePath + "/"
 	if id != "" {
 		uri += id
@@ -81,9 +81,9 @@ func parseResponse(res *http.Response) (*ResponseType, error) {
 	return &r, nil
 }
 
-func TestJsonUpload(t *testing.T) {
+func TestJSONUpload(t *testing.T) {
 	testContent := "{\"k1\": 123, \"k2\": 456}"
-	c := NewDocumentClient("http://127.0.0.1:"+port, "document")
+	c := NewDocClient("http://127.0.0.1:"+port, "document")
 	res, err := c.postDoc("", "application/json", testContent)
 	if err != nil || !res.Ok {
 		t.Errorf("Error uploading json: %s", err.Error())
@@ -95,37 +95,37 @@ func TestJsonUpload(t *testing.T) {
 	}
 }
 
-func TestJsonUploadWithKey(t *testing.T) {
-	testKey := "2345-6789"
-	testContent := "{\"k1\": 123, \"k2\": 456}"
-	c := NewDocumentClient("http://127.0.0.1:"+port, "document")
-	res, err := c.postDoc(testKey, "application/json", testContent)
-	if err != nil || !res.Ok {
-		t.Errorf("Error uploading json with key: %s", err.Error())
-	}
-	res, err = c.deleteDoc(testKey)
-	if err != nil || !res.Ok {
-		t.Errorf("Error deleting json: %s", err.Error())
-	}
-}
-
-func TestJsonDownload(t *testing.T) {
-	testKey := "2345-6789"
-	testContent := "{\"k1\": 123, \"k2\": 456}"
-	c := NewDocumentClient("http://127.0.0.1:"+port, "document")
-	res, err := c.postDoc(testKey, "application/json", testContent)
-	if err != nil || !res.Ok {
-		t.Errorf("Error uploading json with key: %s", err.Error())
-	}
-	res, err = c.getDoc(testKey)
-	if err != nil || !res.Ok {
-		t.Errorf("Error downloading json: %s", err.Error())
-	}
-	if res.Document != testContent {
-		t.Errorf("Error downloading json - unexpected content for document with key %s:\n %s", testKey, err.Error())
-	}
-	res, err = c.deleteDoc(testKey)
-	if err != nil || !res.Ok {
-		t.Errorf("Error deleting json: %s", err.Error())
-	}
-}
+// func TestJSONUploadWithKey(t *testing.T) {
+// 	testKey := "2345-6789"
+// 	testContent := "{\"k1\": 123, \"k2\": 456}"
+// 	c := NewDocClient("http://127.0.0.1:"+port, "document")
+// 	res, err := c.postDoc(testKey, "application/json", testContent)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error uploading json with key: %s", err.Error())
+// 	}
+// 	res, err = c.deleteDoc(testKey)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error deleting json: %s", err.Error())
+// 	}
+// }
+//
+// func TestJSONDownload(t *testing.T) {
+// 	testKey := "2345-6789"
+// 	testContent := "{\"k1\": 123, \"k2\": 456}"
+// 	c := NewDocClient("http://127.0.0.1:"+port, "document")
+// 	res, err := c.postDoc(testKey, "application/json", testContent)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error uploading json with key: %s", err.Error())
+// 	}
+// 	res, err = c.getDoc(testKey)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error downloading json: %s", err.Error())
+// 	}
+// 	if res.Document != testContent {
+// 		t.Errorf("Error downloading json - unexpected content for document with key %s:\n %s", testKey, err.Error())
+// 	}
+// 	res, err = c.deleteDoc(testKey)
+// 	if err != nil || !res.Ok {
+// 		t.Errorf("Error deleting json: %s", err.Error())
+// 	}
+// }
