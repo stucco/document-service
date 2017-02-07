@@ -3,7 +3,6 @@ language: go
 go:
 - 1.6.x
 - 1.7.x
-- tip
 
 script: go test .
 
@@ -21,4 +20,6 @@ deploy:
     secure: D+Gvm/bvN7hVGyubM1ZfeGZOulGvAkJxWhFUG74HyLevqi7Y/DUNEI7G2VeHwzPBR++b7WQqOwjQRK3ThEI0MPs6QYYUA2+nB89ZrLwQMBeYy2rQt2zZwrDo1fM+3mdZtieWUWSg4gbqp51dT9PfTD4ECLzEFVGXT2prVSTXLiY=
   file: doc-service
   on:
+    branch: master
+    go: 1.7
     tags: true
