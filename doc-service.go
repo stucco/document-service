@@ -151,7 +151,7 @@ func EchoEngine(port int) (e *echo.Echo) {
 
 // Create and return the bolt database for storing metadata.
 func createDb(f string, bucket []byte) *bolt.DB {
-	database, err := bolt.Open(f, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	database, err := bolt.Open(f, 0600, &bolt.Options{Timeout: 5 * time.Second})
 	if err != nil {
 		log.Fatalf("Unable to create the metadata database %s: %s", f, err)
 	}
